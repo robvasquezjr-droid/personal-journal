@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Journal</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --card-bg: #ffffff;
+    --text: #1c1e21;
+    --muted: #6b7280;
+    --border: #e2e4e9;
+    --accent: #3b6ef6;
+    --danger: #d1453b;
+    --overlay: rgba(20, 22, 26, 0.6);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181c;
+      --card-bg: #1f2226;
+      --text: #eaecef;
+      --muted: #9aa0aa;
+      --border: #2c2f36;
+      --accent: #6d95ff;
+      --overlay: rgba(0, 0, 0, 0.75);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    padding: 16px 20px;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  header h1 { font-size: 1.25rem; margin: 0; }
+  #fileControls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 12px;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.danger { color: var(--danger); border-color: var(--danger); }
+  button:hover { filter: brightness(0.96); }
+  button:disabled { opacity: 0.5; cursor: default; }
+
+  #banner {
+    display: none;
+    background: #fff3cd;
+    color: #7a5b00;
+    padding: 8px 20px;
+    font-size: 0.85rem;
+  }
+
+  main { max-width: 900px; margin: 0 auto; padding: 20px; }
+
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .toolbar input[type="search"] {
+    flex: 1;
+    min-width: 160px;
+    font: inherit;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+  }
+  .view-toggle { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .view-toggle button { border: none; border-radius: 0; }
+  .view-toggle button + button { border-left: 1px solid var(--border); }
+  .view-toggle button.active { background: var(--accent); color: #fff; }
+
+  #onThisDay {
+    display: none;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+  .otd-title { font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .otd-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 6px 0;
+    color: var(--text);
+    font-size: 0.9rem;
+  }
+  .otd-item:hover { color: var(--accent); }
+
+  .month-header {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 18px 0 8px;
+  }
+  .month-header:first-child { margin-top: 0; }
+
+  .entry-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    cursor: pointer;
+  }
+  .entry-card:hover { border-color: var(--accent); }
+  .entry-date { font-size: 0.75rem; color: var(--muted); white-space: nowrap; padding-top: 2px; min-width: 78px; }
+  .entry-main { flex: 1; min-width: 0; }
+  .entry-title { font-weight: 600; margin-bottom: 2px; }
+  .entry-snippet { font-size: 0.85rem; color: var(--text); white-space: pre-wrap; overflow: hidden; text-overflow: ellipsis; max-height: 3.2em; }
+  .thumb-strip { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  img.thumb {
+    width: 64px; height: 64px; object-fit: cover; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--bg); cursor: pointer;
+  }
+  .thumb-more {
+    width: 64px; height: 64px; border-radius: 6px; border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.8rem; background: var(--bg);
+  }
+  .entry-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .entry-actions button { padding: 4px 9px; font-size: 0.9rem; }
+
+  #emptyState { text-align: center; color: var(--muted); padding: 40px 0; display: none; }
+
+  /* Calendar */
+  #calendarSection { display: none; }
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .cal-nav h2 { font-size: 1rem; margin: 0; }
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .cal-dow { font-size: 0.7rem; color: var(--muted); text-align: center; padding-bottom: 4px; }
+  .cal-day {
+    aspect-ratio: 1;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg);
+    color: var(--text);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px;
+    font-size: 0.8rem;
+    position: relative;
+    overflow: hidden;
+    padding: 0;
+  }
+  .cal-day.today { border-color: var(--accent); border-width: 2px; }
+  .cal-day.selected { box-shadow: inset 0 0 0 2px var(--accent); }
+  .cal-day .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); position: relative; z-index: 1; }
+  .cal-day-photo {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; z-index: 0;
+  }
+  .cal-day-num {
+    position: relative; z-index: 1;
+  }
+  .cal-day.has-photo .cal-day-num {
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+
+  .filter-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px;
+    padding: 4px 10px; font-size: 0.8rem; color: var(--muted); margin-bottom: 14px;
+  }
+  .filter-chip button { border: none; background: none; padding: 0; color: var(--accent); font-size: 0.9rem; }
+
+  /* Modals */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0; background: var(--overlay);
+    align-items: center; justify-content: center; padding: 16px; z-index: 100;
+  }
+  .modal {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 18px;
+    width: 100%; max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal h2 { margin: 0 0 14px; font-size: 1.05rem; }
+
+  .viewer-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 4px; }
+  .viewer-header h2 { margin: 0 0 2px; }
+  .viewer-date { font-size: 0.8rem; color: var(--muted); }
+  .viewer-header-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  #viewerLocation { margin-bottom: 10px; }
+  .viewer-body { white-space: pre-wrap; line-height: 1.5; margin: 14px 0; }
+  #viewerPhotos:empty { display: none; }
+  .field { margin-bottom: 12px; }
+  .field label { font-size: 0.75rem; color: var(--muted); display: block; margin-bottom: 4px; }
+  .field input, .field textarea {
+    width: 100%; font: inherit; padding: 8px 10px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  }
+  .field textarea { resize: vertical; min-height: 140px; }
+  .photo-drop {
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 14px;
+  }
+  .photo-drop.drag-over { border-color: var(--accent); background: var(--bg); }
+  .photo-thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .photo-thumb-wrap { position: relative; }
+  .photo-thumb-wrap img.thumb { display: block; }
+  .thumb-remove {
+    position: absolute; top: -6px; right: -6px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--danger); color: #fff; border: none; padding: 0;
+    line-height: 1; font-size: 0.9rem; display: flex; align-items: center; justify-content: center;
+  }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+  .location-row { display: flex; gap: 8px; }
+  .location-row input { flex: 1; }
+  .location-row button { white-space: nowrap; }
+  .location-meta {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    font-size: 0.78rem; color: var(--muted); margin-top: 6px; min-height: 1.2em;
+  }
+  .location-meta a { color: var(--accent); }
+  .location-meta button { padding: 2px 8px; font-size: 0.75rem; }
+  .location-hint {
+    font-size: 0.75rem; color: var(--muted); margin-top: 6px; line-height: 1.4;
+  }
+  .location-hint code {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+    padding: 1px 5px; font-size: 0.75rem;
+  }
+  .loc-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 0.78rem; color: var(--accent); text-decoration: none;
+    margin-top: 6px;
+  }
+  .loc-pill:hover { text-decoration: underline; }
+
+  #lightbox {
+    display: none;
+    position: fixed; inset: 0; background: var(--overlay);
+    align-items: center; justify-content: center; z-index: 200; flex-direction: column;
+  }
+  #lightbox img { max-width: 92vw; max-height: 78vh; object-fit: contain; border-radius: 4px; }
+  .lightbox-controls { display: flex; align-items: center; gap: 16px; margin-top: 14px; }
+  .lightbox-controls button { background: rgba(255,255,255,0.15); color: #fff; border: none; padding: 8px 14px; }
+  #lightboxCounter { color: #fff; font-size: 0.85rem; }
+  #lightboxClose { position: absolute; top: 16px; right: 20px; background: rgba(255,255,255,0.15); color: #fff; border: none; }
+
+  @media (pointer: coarse) {
+    button { padding: 10px 16px; min-height: 40px; }
+    .entry-actions button, .view-toggle button { padding: 8px 12px; }
+    input, textarea { font-size: 16px; }
+  }
+  @media (max-width: 640px) {
+    header { padding: 12px 14px; }
+    #fileControls { flex-direction: column; align-items: stretch; width: 100%; }
+    #fileControls button { width: 100%; }
+    main { padding: 12px; }
+    .entry-card { flex-direction: column; }
+    .entry-actions { width: 100%; justify-content: flex-end; }
+    .entry-date { min-width: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Journal</h1>
+  <div id="fileControls">
+    <span id="fileStatus">Not connected — using local browser storage</span>
+    <button id="connectBtn">Connect journal folder</button>
+  </div>
+</header>
+
+<div id="banner">No folder connected. Entries (and photos, on this device) are saved in this browser only — click "Connect journal folder" to save them into this folder so they sync via Drive.</div>
+
+<main>
+  <div class="toolbar">
+    <input type="search" id="searchInput" placeholder="Search entries…">
+    <div class="view-toggle">
+      <button id="viewTimelineBtn" class="active" type="button">Timeline</button>
+      <button id="viewCalendarBtn" type="button">Calendar</button>
+    </div>
+    <button id="newEntryBtn" class="primary" type="button">+ New entry</button>
+  </div>
+
+  <div id="onThisDay"></div>
+
+  <div id="dateFilterChip" class="filter-chip" style="display:none;">
+    <span id="dateFilterLabel"></span>
+    <button id="clearDateFilter" type="button">Clear ×</button>
+  </div>
+
+  <div id="timelineSection">
+    <div id="timelineList"></div>
+    <div id="emptyState">No entries yet. Click "+ New entry" to write your first one.</div>
+  </div>
+
+  <div id="calendarSection">
+    <div class="cal-nav">
+      <button id="calPrevBtn" type="button">‹ Prev</button>
+      <h2 id="calendarLabel"></h2>
+      <button id="calNextBtn" type="button">Next ›</button>
+    </div>
+    <div class="calendar-grid" id="calendarGrid"></div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="editorModal">
+  <form class="modal" id="editorForm">
+    <h2 id="editorHeading">New entry</h2>
+    <div class="field">
+      <label for="editorDate">Date</label>
+      <input type="date" id="editorDate" required>
+    </div>
+    <div class="field">
+      <label for="editorTitle">Title</label>
+      <input type="text" id="editorTitle" placeholder="(optional)">
+    </div>
+    <div class="field">
+      <label for="locationLabelInput">Location</label>
+      <div class="location-row">
+        <input type="text" id="locationLabelInput" placeholder="e.g. Kyoto, Japan">
+        <button type="button" id="useLocationBtn">📍 Use current location</button>
+      </div>
+      <div class="location-meta" id="locationMeta"></div>
+      <div class="location-hint" id="locationHint" style="display:none;">GPS needs the app running via <code>start-journal.bat</code> in this folder instead of opening index.html directly — Chrome blocks location on files opened straight from disk. You can still type a location above.</div>
+    </div>
+    <div class="field">
+      <label for="editorBody">Entry</label>
+      <textarea id="editorBody" placeholder="What happened today?"></textarea>
+    </div>
+    <div class="field">
+      <label>Photos</label>
+      <div class="photo-drop" id="photoDrop">
+        <div class="photo-thumbs" id="photoThumbs"></div>
+        <button type="button" id="addPhotosBtn">+ Add photos</button>
+        <input type="file" id="photoInput" accept="image/*" multiple style="display:none;">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" id="cancelEditorBtn">Cancel</button>
+      <button type="submit" class="primary">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="modal-overlay" id="viewerModal">
+  <div class="modal" id="viewerContent">
+    <div class="viewer-header">
+      <div>
+        <h2 id="viewerTitle"></h2>
+        <div class="viewer-date" id="viewerDate"></div>
+      </div>
+      <div class="viewer-header-actions">
+        <button type="button" id="viewerEditBtn" title="Edit">✎ Edit</button>
+        <button type="button" id="viewerCloseBtn" title="Close">Close ×</button>
+      </div>
+    </div>
+    <div class="location-meta" id="viewerLocation"></div>
+    <div class="viewer-body" id="viewerBody"></div>
+    <div class="photo-thumbs" id="viewerPhotos"></div>
+  </div>
+</div>
+
+<div id="lightbox">
+  <button id="lightboxClose" type="button">Close ×</button>
+  <img id="lightboxImg" alt="">
+  <div class="lightbox-controls">
+    <button id="lightboxPrev" type="button">‹ Prev</button>
+    <span id="lightboxCounter"></span>
+    <button id="lightboxNext" type="button">Next ›</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  let data = { entries: [] };
+  let dirHandle = null;
+  let photosDirHandle = null;
+  let dataFileHandle = null;
+
+  let view = 'timeline';
+  let calendarMonth = new Date();
+  let dateFilter = null;
+
+  let draft = null;
+  let sessionAddedPhotos = [];
+  let pendingDeletes = [];
+
+  let lightboxPhotos = [];
+  let lightboxIndex = 0;
+
+  const photoUrlCache = new Map();
+
+  const el = id => document.getElementById(id);
+
+  function uuid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  function formatDate(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function parseLocalDate(str) {
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str == null ? '' : str;
+    return d.innerHTML;
+  }
+
+  // ---------- IndexedDB handle persistence ----------
+  function idbOpen() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('personal-journal', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('handles');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbSet(key, val) {
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('handles', 'readwrite');
+      tx.objectStore('handles').put(val, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+  async function idbGet(key) {
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('handles', 'readonly');
+      const req = tx.objectStore('handles').get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  // ---------- Persistence ----------
+  async function loadFromLocalStorage() {
+    try {
+      const raw = localStorage.getItem('personal-journal-data');
+      if (raw) data = JSON.parse(raw);
+    } catch (e) { console.error(e); }
+  }
+  function saveToLocalStorage() {
+    try {
+      localStorage.setItem('personal-journal-data', JSON.stringify(data));
+    } catch (e) { console.error('Could not save to localStorage', e); }
+  }
+  async function saveData() {
+    if (dataFileHandle) {
+      try {
+        const writable = await dataFileHandle.createWritable();
+        await writable.write(JSON.stringify(data, null, 2));
+        await writable.close();
+        return;
+      } catch (e) {
+        console.error('Failed writing file, falling back to localStorage', e);
+      }
+    }
+    saveToLocalStorage();
+  }
+  async function loadFromFile() {
+    const file = await dataFileHandle.getFile();
+    const text = await file.text();
+    if (text.trim()) {
+      data = JSON.parse(text);
+    } else {
+      data = { entries: [] };
+      await saveData();
+    }
+  }
+
+  async function verifyPermission(handle) {
+    const opts = { mode: 'readwrite' };
+    if ((await handle.queryPermission(opts)) === 'granted') return true;
+    if ((await handle.requestPermission(opts)) === 'granted') return true;
+    return false;
+  }
+
+  async function connectHandles() {
+    photosDirHandle = await dirHandle.getDirectoryHandle('photos', { create: true });
+    dataFileHandle = await dirHandle.getFileHandle('journal-data.json', { create: true });
+  }
+
+  async function chooseFolder() {
+    if (!('showDirectoryPicker' in window)) {
+      alert('This browser can\'t connect a folder — Firefox and Safari don\'t support that feature yet (only Chrome, Edge, and other Chromium browsers do). Your entries will still save in this browser\'s local storage, but won\'t sync to your Drive folder unless you use Chrome or Edge.');
+      return;
+    }
+    try {
+      const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      if (!(await verifyPermission(handle))) throw new Error('Permission denied');
+      dirHandle = handle;
+      await connectHandles();
+      await idbSet('dirHandle', dirHandle);
+      await loadFromFile();
+      updateFileStatus();
+      renderCurrentView();
+    } catch (e) {
+      if (e.name !== 'AbortError') console.error(e);
+    }
+  }
+
+  async function tryRestoreDir() {
+    if (!('showDirectoryPicker' in window)) { updateFileStatus(); return; }
+    try {
+      const handle = await idbGet('dirHandle');
+      if (!handle) return;
+      const perm = await handle.queryPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') {
+        dirHandle = handle;
+        updateFileStatus('needsPermission');
+        return;
+      }
+      dirHandle = handle;
+      await connectHandles();
+      await loadFromFile();
+    } catch (e) {
+      console.error('Could not restore folder handle', e);
+    }
+  }
+
+  function updateFileStatus(state) {
+    const status = el('fileStatus');
+    const banner = el('banner');
+    const connectBtn = el('connectBtn');
+    if (dirHandle && state !== 'needsPermission') {
+      status.textContent = 'Connected: ' + (dirHandle.name || 'journal folder');
+      banner.style.display = 'none';
+      connectBtn.textContent = 'Switch folder';
+    } else if (state === 'needsPermission') {
+      status.textContent = 'Click "Reconnect" to grant access to your journal folder';
+      connectBtn.textContent = 'Reconnect';
+      banner.style.display = 'none';
+    } else {
+      status.textContent = 'showDirectoryPicker' in window
+        ? 'Not connected — using local browser storage'
+        : 'Folder access unsupported in this browser — using local browser storage';
+      banner.style.display = 'block';
+      connectBtn.textContent = 'Connect journal folder';
+    }
+  }
+
+  el('connectBtn').addEventListener('click', async () => {
+    if (dirHandle && (await dirHandle.queryPermission({ mode: 'readwrite' })) !== 'granted') {
+      if (await verifyPermission(dirHandle)) {
+        await connectHandles();
+        await loadFromFile();
+        updateFileStatus();
+        renderCurrentView();
+        return;
+      }
+    }
+    chooseFolder();
+  });
+
+  // ---------- Photo helpers ----------
+  async function resolvePhotoUrl(path) {
+    if (!path) return '';
+    if (path.startsWith('data:')) return path;
+    if (photoUrlCache.has(path)) return photoUrlCache.get(path);
+    if (!photosDirHandle) return '';
+    try {
+      const name = path.split('/').pop();
+      const fh = await photosDirHandle.getFileHandle(name);
+      const file = await fh.getFile();
+      const url = URL.createObjectURL(file);
+      photoUrlCache.set(path, url);
+      return url;
+    } catch (e) {
+      console.error('Could not load photo', path, e);
+      return '';
+    }
+  }
+
+  function resolveImagesIn(container) {
+    container.querySelectorAll('img[data-photo]').forEach(img => {
+      resolvePhotoUrl(img.dataset.photo).then(url => { if (url) img.src = url; });
+    });
+  }
+
+  async function deletePhotoFile(path) {
+    if (photosDirHandle && !path.startsWith('data:')) {
+      try { await photosDirHandle.removeEntry(path.split('/').pop()); } catch (e) { /* already gone */ }
+    }
+    const cached = photoUrlCache.get(path);
+    if (cached) URL.revokeObjectURL(cached);
+    photoUrlCache.delete(path);
+  }
+
+  async function handleNewPhotos(fileList) {
+    const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+    for (const file of files) {
+      const ext = ((file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')) || 'jpg';
+      const rand = uuid().slice(0, 8);
+      if (photosDirHandle) {
+        const name = `${draft.date}-${rand}.${ext}`;
+        try {
+          const fh = await photosDirHandle.getFileHandle(name, { create: true });
+          const writable = await fh.createWritable();
+          await writable.write(file);
+          await writable.close();
+          const path = 'photos/' + name;
+          draft.photos.push(path);
+          sessionAddedPhotos.push(path);
+          photoUrlCache.set(path, URL.createObjectURL(file));
+        } catch (e) { console.error('Failed to save photo', e); }
+      } else {
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        draft.photos.push(dataUrl);
+        sessionAddedPhotos.push(dataUrl);
+      }
+    }
+    renderEditorPhotos();
+  }
+
+  function removeDraftPhoto(path) {
+    draft.photos = draft.photos.filter(p => p !== path);
+    if (!pendingDeletes.includes(path)) pendingDeletes.push(path);
+    renderEditorPhotos();
+  }
+
+  // ---------- Editor ----------
+  function blankEntry(dateStr) {
+    return {
+      id: uuid(),
+      date: dateStr || formatDate(new Date()),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      title: '',
+      body: '',
+      photos: [],
+      location: null,
+    };
+  }
+
+  function openEditor(entry) {
+    draft = entry ? JSON.parse(JSON.stringify(entry)) : blankEntry();
+    sessionAddedPhotos = [];
+    pendingDeletes = [];
+    el('editorHeading').textContent = entry ? 'Edit entry' : 'New entry';
+    el('editorDate').value = draft.date;
+    el('editorTitle').value = draft.title || '';
+    el('editorBody').value = draft.body || '';
+    el('locationLabelInput').value = draft.location?.label || '';
+    renderEditorPhotos();
+    renderLocationMeta();
+    el('editorModal').style.display = 'flex';
+    el('editorTitle').focus();
+  }
+
+  // ---------- Location ----------
+  function mapsUrlFor(location) {
+    if (!location) return null;
+    if (location.lat != null && location.lng != null) {
+      return `https://www.google.com/maps?q=${location.lat},${location.lng}`;
+    }
+    if (location.label) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.label)}`;
+    }
+    return null;
+  }
+
+  async function reverseGeocode(lat, lng) {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`, {
+        headers: { 'Accept': 'application/json' },
+      });
+      if (!res.ok) throw new Error('reverse geocode request failed');
+      const result = await res.json();
+      const a = result.address || {};
+      const place = a.city || a.town || a.village || a.hamlet || a.suburb || a.county;
+      const region = a.state && a.state !== place ? a.state : null;
+      const short = [place, region, a.country].filter(Boolean).join(', ');
+      return short || result.display_name || null;
+    } catch (e) {
+      console.error('Reverse geocode failed', e);
+      return null;
+    }
+  }
+
+  function renderLocationMeta() {
+    const box = el('locationMeta');
+    if (!draft.location || (!draft.location.label && draft.location.lat == null)) {
+      box.innerHTML = '';
+      return;
+    }
+    const url = mapsUrlFor(draft.location);
+    const coordsText = draft.location.lat != null ? `${draft.location.lat.toFixed(4)}, ${draft.location.lng.toFixed(4)}` : '';
+    box.innerHTML = `
+      ${coordsText ? `<span>${coordsText}</span>` : ''}
+      ${url ? `<a href="${url}" target="_blank" rel="noopener noreferrer">Open in Maps ↗</a>` : ''}
+      <button type="button" id="clearLocationBtn">Clear</button>
+    `;
+  }
+
+  el('locationMeta').addEventListener('click', e => {
+    if (e.target.id === 'clearLocationBtn') {
+      draft.location = null;
+      el('locationLabelInput').value = '';
+      renderLocationMeta();
+    }
+  });
+
+  el('locationLabelInput').addEventListener('input', () => {
+    const val = el('locationLabelInput').value;
+    if (!draft.location) draft.location = { lat: null, lng: null, label: '' };
+    draft.location.label = val;
+    renderLocationMeta();
+  });
+
+  el('useLocationBtn').addEventListener('click', () => {
+    if (!('geolocation' in navigator)) {
+      alert('Geolocation is not available in this browser. Type a location manually instead.');
+      return;
+    }
+    const btn = el('useLocationBtn');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Locating…';
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      draft.location = { lat, lng, label: '' };
+      btn.textContent = 'Looking up place name…';
+      const name = await reverseGeocode(lat, lng);
+      draft.location.label = name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      el('locationLabelInput').value = draft.location.label;
+      renderLocationMeta();
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }, err => {
+      console.error('Geolocation error', err);
+      if (err.code === err.PERMISSION_DENIED && location.protocol === 'file:') {
+        alert('Chrome blocks GPS access on files opened directly from disk, even when location is allowed in settings. Double-click start-journal.bat in this folder to open the app at http://localhost instead — then GPS will work. You can still type a location manually below.');
+      } else {
+        alert('Could not get your location (' + err.message + '). You can type a location manually instead.');
+      }
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+  });
+
+  async function cancelEditor() {
+    for (const path of sessionAddedPhotos) await deletePhotoFile(path);
+    sessionAddedPhotos = [];
+    pendingDeletes = [];
+    draft = null;
+    el('editorModal').style.display = 'none';
+  }
+
+  // ---------- Viewer ----------
+  let viewingId = null;
+
+  function openViewer(entry) {
+    viewingId = entry.id;
+    el('viewerTitle').textContent = entry.title || 'Untitled entry';
+    const d = parseLocalDate(entry.date);
+    el('viewerDate').textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    el('viewerBody').textContent = entry.body || '';
+
+    const locBox = el('viewerLocation');
+    if (entry.location && (entry.location.label || entry.location.lat != null)) {
+      const url = mapsUrlFor(entry.location);
+      const coordsText = entry.location.lat != null ? `${entry.location.lat.toFixed(4)}, ${entry.location.lng.toFixed(4)}` : '';
+      locBox.innerHTML = `<span>📍 ${escapeHtml(entry.location.label || coordsText)}</span>${url ? `<a href="${url}" target="_blank" rel="noopener noreferrer">Open in Maps ↗</a>` : ''}`;
+    } else {
+      locBox.innerHTML = '';
+    }
+
+    const photosBox = el('viewerPhotos');
+    photosBox.innerHTML = entry.photos.map(p => `<img class="thumb" data-photo="${p}">`).join('');
+    resolveImagesIn(photosBox);
+
+    el('viewerModal').style.display = 'flex';
+  }
+
+  function closeViewer() {
+    el('viewerModal').style.display = 'none';
+    viewingId = null;
+  }
+
+  el('viewerCloseBtn').addEventListener('click', closeViewer);
+  el('viewerModal').addEventListener('click', e => { if (e.target.id === 'viewerModal') closeViewer(); });
+  el('viewerEditBtn').addEventListener('click', () => {
+    const entry = data.entries.find(x => x.id === viewingId);
+    closeViewer();
+    if (entry) openEditor(entry);
+  });
+  el('viewerPhotos').addEventListener('click', e => {
+    const img = e.target.closest('img[data-photo]');
+    if (!img) return;
+    const entry = data.entries.find(x => x.id === viewingId);
+    if (!entry) return;
+    openLightbox(entry.photos, entry.photos.indexOf(img.dataset.photo));
+  });
+
+  function renderEditorPhotos() {
+    const box = el('photoThumbs');
+    box.innerHTML = draft.photos.map(p => `
+      <div class="photo-thumb-wrap">
+        <img class="thumb" data-photo="${p}">
+        <button type="button" class="thumb-remove" data-photo="${p}" title="Remove">×</button>
+      </div>
+    `).join('');
+    resolveImagesIn(box);
+  }
+
+  el('photoThumbs').addEventListener('click', e => {
+    const removeBtn = e.target.closest('.thumb-remove');
+    if (removeBtn) { removeDraftPhoto(removeBtn.dataset.photo); return; }
+    const img = e.target.closest('img[data-photo]');
+    if (img) openLightbox(draft.photos, draft.photos.indexOf(img.dataset.photo));
+  });
+
+  el('addPhotosBtn').addEventListener('click', () => el('photoInput').click());
+  el('photoInput').addEventListener('change', async e => {
+    await handleNewPhotos(e.target.files);
+    e.target.value = '';
+  });
+
+  const photoDrop = el('photoDrop');
+  photoDrop.addEventListener('dragover', e => { e.preventDefault(); photoDrop.classList.add('drag-over'); });
+  photoDrop.addEventListener('dragleave', () => photoDrop.classList.remove('drag-over'));
+  photoDrop.addEventListener('drop', async e => {
+    e.preventDefault();
+    photoDrop.classList.remove('drag-over');
+    await handleNewPhotos(e.dataTransfer.files);
+  });
+
+  el('cancelEditorBtn').addEventListener('click', cancelEditor);
+  el('editorModal').addEventListener('click', e => { if (e.target.id === 'editorModal') cancelEditor(); });
+
+  el('editorForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    draft.date = el('editorDate').value || formatDate(new Date());
+    draft.title = el('editorTitle').value.trim();
+    draft.body = el('editorBody').value;
+    if (draft.location) draft.location.label = (draft.location.label || '').trim();
+    if (draft.location && !draft.location.label && draft.location.lat == null) draft.location = null;
+    draft.updatedAt = new Date().toISOString();
+
+    const idx = data.entries.findIndex(x => x.id === draft.id);
+    if (idx !== -1) data.entries[idx] = draft; else data.entries.push(draft);
+    await saveData();
+
+    for (const path of pendingDeletes) await deletePhotoFile(path);
+    sessionAddedPhotos = [];
+    pendingDeletes = [];
+    draft = null;
+    el('editorModal').style.display = 'none';
+    renderCurrentView();
+  });
+
+  async function deleteEntry(id) {
+    const entry = data.entries.find(x => x.id === id);
+    if (!entry) return;
+    if (!confirm('Delete this entry and its photos? This cannot be undone.')) return;
+    for (const path of entry.photos) await deletePhotoFile(path);
+    data.entries = data.entries.filter(x => x.id !== id);
+    await saveData();
+    renderCurrentView();
+  }
+
+  el('newEntryBtn').addEventListener('click', () => openEditor(null));
+
+  // ---------- Lightbox ----------
+  function openLightbox(photos, index) {
+    if (!photos.length) return;
+    lightboxPhotos = photos;
+    lightboxIndex = Math.max(0, index);
+    el('lightbox').style.display = 'flex';
+    updateLightbox();
+  }
+  function updateLightbox() {
+    const path = lightboxPhotos[lightboxIndex];
+    resolvePhotoUrl(path).then(url => { el('lightboxImg').src = url; });
+    el('lightboxCounter').textContent = `${lightboxIndex + 1} / ${lightboxPhotos.length}`;
+  }
+  function closeLightbox() {
+    el('lightbox').style.display = 'none';
+    el('lightboxImg').src = '';
+  }
+  el('lightboxPrev').addEventListener('click', () => {
+    lightboxIndex = (lightboxIndex - 1 + lightboxPhotos.length) % lightboxPhotos.length;
+    updateLightbox();
+  });
+  el('lightboxNext').addEventListener('click', () => {
+    lightboxIndex = (lightboxIndex + 1) % lightboxPhotos.length;
+    updateLightbox();
+  });
+  el('lightboxClose').addEventListener('click', closeLightbox);
+  el('lightbox').addEventListener('click', e => { if (e.target.id === 'lightbox') closeLightbox(); });
+  document.addEventListener('keydown', e => {
+    if (el('lightbox').style.display === 'flex') {
+      if (e.key === 'Escape') closeLightbox();
+      else if (e.key === 'ArrowLeft') el('lightboxPrev').click();
+      else if (e.key === 'ArrowRight') el('lightboxNext').click();
+    } else if (el('editorModal').style.display === 'flex') {
+      if (e.key === 'Escape') cancelEditor();
+    } else if (el('viewerModal').style.display === 'flex') {
+      if (e.key === 'Escape') closeViewer();
+    }
+  });
+
+  // ---------- Views ----------
+  function setView(next) {
+    view = next;
+    el('viewTimelineBtn').classList.toggle('active', view === 'timeline');
+    el('viewCalendarBtn').classList.toggle('active', view === 'calendar');
+    el('timelineSection').style.display = view === 'timeline' ? 'block' : 'none';
+    el('calendarSection').style.display = view === 'calendar' ? 'block' : 'none';
+  }
+  el('viewTimelineBtn').addEventListener('click', () => { setView('timeline'); renderCurrentView(); });
+  el('viewCalendarBtn').addEventListener('click', () => { setView('calendar'); renderCurrentView(); });
+
+  el('searchInput').addEventListener('input', () => {
+    if (el('searchInput').value.trim() && view !== 'timeline') { setView('timeline'); }
+    renderCurrentView();
+  });
+
+  el('clearDateFilter').addEventListener('click', () => {
+    dateFilter = null;
+    renderCurrentView();
+  });
+
+  function getFilteredSortedEntries() {
+    const q = el('searchInput').value.trim().toLowerCase();
+    let list = [...data.entries];
+    if (q) list = list.filter(e => (e.title || '').toLowerCase().includes(q) || (e.body || '').toLowerCase().includes(q));
+    if (dateFilter) list = list.filter(e => e.date === dateFilter);
+    list.sort((a, b) => b.date.localeCompare(a.date) || new Date(b.createdAt) - new Date(a.createdAt));
+    return list;
+  }
+
+  function renderDateFilterChip() {
+    const chip = el('dateFilterChip');
+    if (dateFilter) {
+      chip.style.display = 'inline-flex';
+      el('dateFilterLabel').textContent = parseLocalDate(dateFilter).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    } else {
+      chip.style.display = 'none';
+    }
+  }
+
+  function renderTimeline() {
+    renderDateFilterChip();
+    const container = el('timelineList');
+    container.innerHTML = '';
+    const list = getFilteredSortedEntries();
+    el('emptyState').style.display = list.length ? 'none' : 'block';
+
+    let lastMonthKey = null;
+    list.forEach(entry => {
+      const d = parseLocalDate(entry.date);
+      const monthKey = d.getFullYear() + '-' + d.getMonth();
+      if (monthKey !== lastMonthKey) {
+        lastMonthKey = monthKey;
+        const header = document.createElement('div');
+        header.className = 'month-header';
+        header.textContent = d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        container.appendChild(header);
+      }
+
+      const snippet = entry.body || '';
+      const card = document.createElement('div');
+      card.className = 'entry-card';
+      card.dataset.id = entry.id;
+      card.innerHTML = `
+        <div class="entry-date">${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+        <div class="entry-main">
+          ${entry.title ? `<div class="entry-title">${escapeHtml(entry.title)}</div>` : ''}
+          ${snippet ? `<div class="entry-snippet">${escapeHtml(snippet)}</div>` : ''}
+          ${entry.location ? `<a class="loc-pill" href="${mapsUrlFor(entry.location)}" target="_blank" rel="noopener noreferrer">📍 ${escapeHtml(entry.location.label || `${entry.location.lat.toFixed(3)}, ${entry.location.lng.toFixed(3)}`)}</a>` : ''}
+          ${entry.photos.length ? `<div class="thumb-strip">${
+            entry.photos.slice(0, 4).map((p, i) => `<img class="thumb" data-photo="${p}" data-idx="${i}">`).join('')
+          }${entry.photos.length > 4 ? `<div class="thumb-more">+${entry.photos.length - 4}</div>` : ''}</div>` : ''}
+        </div>
+        <div class="entry-actions">
+          <button type="button" data-action="edit" title="Edit">✎</button>
+          <button type="button" data-action="delete" class="danger" title="Delete">🗑</button>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+    resolveImagesIn(container);
+  }
+
+  el('timelineList').addEventListener('click', e => {
+    const card = e.target.closest('.entry-card');
+    if (!card) return;
+    const entry = data.entries.find(x => x.id === card.dataset.id);
+    if (!entry) return;
+
+    const btn = e.target.closest('button[data-action]');
+    if (btn) {
+      e.stopPropagation();
+      if (btn.dataset.action === 'edit') openEditor(entry);
+      else if (btn.dataset.action === 'delete') deleteEntry(entry.id);
+      return;
+    }
+    const locLink = e.target.closest('a.loc-pill');
+    if (locLink) {
+      e.stopPropagation();
+      return;
+    }
+    const thumbImg = e.target.closest('img.thumb');
+    if (thumbImg) {
+      e.stopPropagation();
+      openLightbox(entry.photos, Number(thumbImg.dataset.idx || 0));
+      return;
+    }
+    openViewer(entry);
+  });
+
+  function renderCalendar() {
+    const container = el('calendarGrid');
+    container.innerHTML = '';
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    el('calendarLabel').textContent = calendarMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+    const entriesByDate = {};
+    data.entries.forEach(e => { (entriesByDate[e.date] ||= []).push(e); });
+
+    ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(dow => {
+      const h = document.createElement('div');
+      h.className = 'cal-dow';
+      h.textContent = dow;
+      container.appendChild(h);
+    });
+
+    const firstDay = new Date(year, month, 1);
+    const startOffset = firstDay.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const todayStr = formatDate(new Date());
+
+    for (let i = 0; i < startOffset; i++) container.appendChild(document.createElement('div'));
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = formatDate(new Date(year, month, day));
+      const has = entriesByDate[dateStr];
+      const coverPhoto = has ? has.map(e => e.photos[0]).find(Boolean) : null;
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'cal-day'
+        + (dateStr === todayStr ? ' today' : '')
+        + (dateStr === dateFilter ? ' selected' : '')
+        + (coverPhoto ? ' has-photo' : '');
+      cell.dataset.date = dateStr;
+      cell.innerHTML = `
+        ${coverPhoto ? `<img class="cal-day-photo" data-photo="${coverPhoto}">` : ''}
+        <span class="cal-day-num">${day}</span>
+        ${has && !coverPhoto ? '<div class="dot"></div>' : ''}
+      `;
+      container.appendChild(cell);
+    }
+    resolveImagesIn(container);
+  }
+
+  el('calendarGrid').addEventListener('click', e => {
+    const cell = e.target.closest('.cal-day');
+    if (!cell) return;
+    const dateStr = cell.dataset.date;
+    const entries = data.entries.filter(x => x.date === dateStr);
+    if (entries.length === 1) {
+      openViewer(entries[0]);
+    } else if (entries.length > 1) {
+      dateFilter = dateStr;
+      setView('timeline');
+      renderCurrentView();
+    } else {
+      openEditor(blankEntry(dateStr));
+    }
+  });
+
+  el('calPrevBtn').addEventListener('click', () => {
+    calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1);
+    renderCalendar();
+  });
+  el('calNextBtn').addEventListener('click', () => {
+    calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
+    renderCalendar();
+  });
+
+  function renderOnThisDay() {
+    const box = el('onThisDay');
+    const today = new Date();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const thisYear = String(today.getFullYear());
+    const matches = data.entries.filter(e => e.date.slice(5, 7) === mm && e.date.slice(8, 10) === dd && e.date.slice(0, 4) !== thisYear);
+    matches.sort((a, b) => b.date.localeCompare(a.date));
+
+    if (!matches.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    box.style.display = 'block';
+    box.innerHTML = '<div class="otd-title">On this day</div>' + matches.map(e => {
+      const years = today.getFullYear() - Number(e.date.slice(0, 4));
+      const label = e.title || (e.body || '').slice(0, 60) || 'Untitled entry';
+      return `<button type="button" class="otd-item" data-id="${e.id}">${years} year${years === 1 ? '' : 's'} ago — ${escapeHtml(label)}</button>`;
+    }).join('');
+  }
+  el('onThisDay').addEventListener('click', e => {
+    const btn = e.target.closest('.otd-item');
+    if (!btn) return;
+    const entry = data.entries.find(x => x.id === btn.dataset.id);
+    if (entry) openViewer(entry);
+  });
+
+  function renderCurrentView() {
+    renderOnThisDay();
+    if (view === 'timeline') renderTimeline();
+    else renderCalendar();
+  }
+
+  // ---------- Init ----------
+  if (location.protocol === 'file:') {
+    el('locationHint').style.display = 'block';
+  }
+
+  (async () => {
+    await loadFromLocalStorage();
+    await tryRestoreDir();
+    updateFileStatus(dirHandle && (await dirHandle.queryPermission({ mode: 'readwrite' })) !== 'granted' ? 'needsPermission' : undefined);
+    renderCurrentView();
+  })();
+})();
+</script>
+</body>
+</html>
