@@ -332,8 +332,21 @@
     padding: 14px;
     box-shadow: var(--shadow);
   }
-  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .cal-nav h2 { font-size: 1.05rem; margin: 0; color: var(--accent); }
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+  #calPrevBtn, #calNextBtn { font-size: 1.2rem; line-height: 1; padding: 6px 14px; }
+  .cal-jump { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .cal-jump select {
+    font: inherit;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+    border-radius: 8px;
+    padding: 6px 8px;
+    cursor: pointer;
+  }
+  .cal-jump select:hover { border-color: var(--accent); }
+  #calTodayBtn { font-size: 0.85rem; }
   .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
   .cal-dow { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-align: center; padding-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
   .cal-day {
@@ -579,9 +592,13 @@
 
   <div id="calendarSection">
     <div class="cal-nav">
-      <button id="calPrevBtn" type="button">‹ Prev</button>
-      <h2 id="calendarLabel"></h2>
-      <button id="calNextBtn" type="button">Next ›</button>
+      <button id="calPrevBtn" type="button" title="Previous month" aria-label="Previous month">‹</button>
+      <div class="cal-jump">
+        <select id="calMonthSelect" aria-label="Month"></select>
+        <select id="calYearSelect" aria-label="Year"></select>
+        <button id="calTodayBtn" type="button">Today</button>
+      </div>
+      <button id="calNextBtn" type="button" title="Next month" aria-label="Next month">›</button>
     </div>
     <div class="calendar-grid" id="calendarGrid"></div>
   </div>
@@ -1723,10 +1740,9 @@
     container.innerHTML = '';
     const year = calendarMonth.getFullYear();
     const month = calendarMonth.getMonth();
-    el('calendarLabel').textContent = calendarMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-
     const entriesByDate = {};
     data.entries.forEach(e => { (entriesByDate[e.date] ||= []).push(e); });
+    renderCalendarJump(year, month);
 
     ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(dow => {
       const h = document.createElement('div');
@@ -1756,6 +1772,10 @@
         + (dateStr === dateFilter ? ' selected' : '')
         + (coverPhoto ? ' has-photo' : '');
       cell.dataset.date = dateStr;
+      const dayLabel = new Date(year, month, day).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      cell.setAttribute('aria-label', has
+        ? `${dayLabel}, ${has.length} ${has.length === 1 ? 'entry' : 'entries'}${mood ? ', ' + mood.label : ''}`
+        : `${dayLabel}, no entries`);
       if (mood) cell.style.setProperty('--tile-color', mood.color);
       cell.innerHTML = `
         ${coverPhoto ? `<img class="cal-day-photo" data-photo="${coverPhoto}">` : ''}
@@ -1781,6 +1801,58 @@
     } else {
       openEditor(blankEntry(dateStr));
     }
+  });
+
+  // Month/year dropdowns, with entry counts so it's easy to spot where entries are.
+  function renderCalendarJump(year, month) {
+    const thisYear = new Date().getFullYear();
+    const countsByYear = {};
+    const countsByMonth = {};
+    data.entries.forEach(e => {
+      const y = Number(e.date.slice(0, 4));
+      countsByYear[y] = (countsByYear[y] || 0) + 1;
+      if (y === year) {
+        const m = Number(e.date.slice(5, 7)) - 1;
+        countsByMonth[m] = (countsByMonth[m] || 0) + 1;
+      }
+    });
+    const entryYears = Object.keys(countsByYear).map(Number);
+    const firstYear = Math.min(thisYear - 25, year, ...entryYears);
+    const lastYear = Math.max(thisYear + 1, year, ...entryYears);
+
+    const yearOptions = [];
+    for (let y = lastYear; y >= firstYear; y--) {
+      const n = countsByYear[y];
+      yearOptions.push(`<option value="${y}">${y}${n ? ` (${n})` : ''}</option>`);
+    }
+    el('calYearSelect').innerHTML = yearOptions.join('');
+    el('calYearSelect').value = String(year);
+
+    el('calMonthSelect').innerHTML = Array.from({ length: 12 }, (_, m) => {
+      const name = new Date(2000, m, 1).toLocaleDateString(undefined, { month: 'long' });
+      const n = countsByMonth[m];
+      return `<option value="${m}">${name}${n ? ` (${n})` : ''}</option>`;
+    }).join('');
+    el('calMonthSelect').value = String(month);
+
+    const now = new Date();
+    el('calTodayBtn').disabled = year === now.getFullYear() && month === now.getMonth();
+  }
+
+  function jumpCalendarTo(year, month) {
+    calendarMonth = new Date(year, month, 1);
+    renderCalendar();
+  }
+
+  el('calMonthSelect').addEventListener('change', () => {
+    jumpCalendarTo(calendarMonth.getFullYear(), Number(el('calMonthSelect').value));
+  });
+  el('calYearSelect').addEventListener('change', () => {
+    jumpCalendarTo(Number(el('calYearSelect').value), calendarMonth.getMonth());
+  });
+  el('calTodayBtn').addEventListener('click', () => {
+    const now = new Date();
+    jumpCalendarTo(now.getFullYear(), now.getMonth());
   });
 
   el('calPrevBtn').addEventListener('click', () => {
