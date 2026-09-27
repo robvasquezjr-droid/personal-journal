@@ -3,111 +3,224 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#2667c9" id="themeColorMeta">
 <title>Journal</title>
+<script>
+  try { document.documentElement.dataset.theme = localStorage.getItem('personal-journal-theme') || 'ocean'; }
+  catch (e) { document.documentElement.dataset.theme = 'ocean'; }
+</script>
 <style>
   :root {
-    --bg: #f5f6f8;
+    color-scheme: light dark;
+    --bg: #f7f6f4;
     --card-bg: #ffffff;
     --text: #1c1e21;
-    --muted: #6b7280;
-    --border: #e2e4e9;
-    --accent: #3b6ef6;
+    --muted: #676d78;
+    --border: #e5e2de;
     --danger: #d1453b;
-    --overlay: rgba(20, 22, 26, 0.6);
+    --overlay: rgba(20, 22, 26, 0.55);
+    --on-accent: #ffffff;
+    --header-shade: 10%;
+    --shadow: 0 1px 2px rgba(20, 20, 30, 0.05), 0 6px 18px rgba(20, 20, 30, 0.06);
+    --shadow-hover: 0 2px 4px rgba(20, 20, 30, 0.07), 0 12px 28px rgba(20, 20, 30, 0.11);
+    --accent: #2667c9;
+    --accent-2: #129e94;
+    --accent-soft: color-mix(in srgb, var(--accent) 13%, var(--card-bg));
+    --page-bg: color-mix(in srgb, var(--accent) 5%, var(--bg));
   }
+  :root[data-theme="sunset"]   { --accent: #d9482f; --accent-2: #e57c2f; }
+  :root[data-theme="forest"]   { --accent: #2a7f4d; --accent-2: #5f9a2e; }
+  :root[data-theme="lavender"] { --accent: #6d4fd6; --accent-2: #c9458a; }
+  :root[data-theme="classic"]  { --accent: #3b6ef6; --accent-2: #5b7ff5; }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #16181c;
-      --card-bg: #1f2226;
+      --bg: #131519;
+      --card-bg: #1d2025;
       --text: #eaecef;
       --muted: #9aa0aa;
-      --border: #2c2f36;
-      --accent: #6d95ff;
-      --overlay: rgba(0, 0, 0, 0.75);
+      --border: #2d3139;
+      --overlay: rgba(0, 0, 0, 0.72);
+      --on-accent: #0f1115;
+      --header-shade: 45%;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 18px rgba(0, 0, 0, 0.25);
+      --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.35), 0 12px 28px rgba(0, 0, 0, 0.35);
+      --accent: #5b9cf0;
+      --accent-2: #3cc9bd;
     }
+    :root[data-theme="sunset"]   { --accent: #ff7d62; --accent-2: #ffa15a; }
+    :root[data-theme="forest"]   { --accent: #56c47f; --accent-2: #9ccf5a; }
+    :root[data-theme="lavender"] { --accent: #a58bff; --accent-2: #f07ab5; }
+    :root[data-theme="classic"]  { --accent: #7a9cff; --accent-2: #93acff; }
   }
+
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background: var(--bg);
+    background:
+      radial-gradient(1100px 380px at 50% -140px, color-mix(in srgb, var(--accent-2) 16%, transparent), transparent),
+      var(--page-bg);
+    background-repeat: no-repeat;
+    min-height: 100vh;
     color: var(--text);
   }
+
+  /* Header */
   header {
     padding: 16px 20px;
-    background: var(--card-bg);
-    border-bottom: 1px solid var(--border);
+    background: linear-gradient(120deg,
+      color-mix(in srgb, var(--accent), #000 var(--header-shade)),
+      color-mix(in srgb, var(--accent-2), #000 var(--header-shade)));
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
     display: flex;
     align-items: center;
-    justify-content: space-between;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   }
-  header h1 { font-size: 1.25rem; margin: 0; }
+  .brand { flex: 1; min-width: 0; }
+  .brand h1 { font-size: 1.35rem; margin: 0; letter-spacing: 0.01em; }
+  .header-date { font-size: 0.8rem; opacity: 0.92; margin-top: 2px; }
   #fileControls {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.85rem;
-    color: var(--muted);
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.92);
   }
+  button.header-btn {
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.38);
+    color: #fff;
+    text-shadow: inherit;
+  }
+  button.header-btn:hover { background: rgba(255, 255, 255, 0.26); border-color: rgba(255, 255, 255, 0.6); }
+  .theme-wrap { position: relative; }
+  .theme-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    min-width: 190px;
+    background: var(--card-bg);
+    color: var(--text);
+    text-shadow: none;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-hover);
+    padding: 6px;
+    z-index: 60;
+  }
+  .theme-menu[hidden] { display: none; }
+  .theme-menu-title { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 8px 4px; }
+  button.theme-option {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; text-align: left;
+    border: none; background: none;
+    padding: 7px 8px; border-radius: 8px;
+  }
+  button.theme-option:hover { background: var(--accent-soft); }
+  button.theme-option.active { font-weight: 600; }
+  .swatch { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); }
+
+  /* Buttons & inputs */
   button {
     font: inherit;
     cursor: pointer;
     border: 1px solid var(--border);
     background: var(--card-bg);
     color: var(--text);
-    border-radius: 6px;
+    border-radius: 8px;
     padding: 6px 12px;
+    transition: background 0.15s, border-color 0.15s, filter 0.15s;
   }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  button.danger { color: var(--danger); border-color: var(--danger); }
-  button:hover { filter: brightness(0.96); }
-  button:disabled { opacity: 0.5; cursor: default; }
+  button:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+  button.primary:hover { filter: brightness(1.07); }
+  button.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); }
+  button:disabled { opacity: 0.55; cursor: default; }
+  button:focus-visible, a:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   #banner {
     display: none;
-    background: #fff3cd;
-    color: #7a5b00;
+    background: color-mix(in srgb, #f5b301 16%, var(--card-bg));
+    color: var(--text);
+    border-bottom: 1px solid color-mix(in srgb, #f5b301 35%, var(--border));
     padding: 8px 20px;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
   }
 
   main { max-width: 900px; margin: 0 auto; padding: 20px; }
 
+  /* Toolbar & search */
   .toolbar {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
   }
-  .toolbar input[type="search"] {
+  .search-wrap {
+    position: relative;
     flex: 1;
-    min-width: 160px;
-    font: inherit;
-    padding: 8px 10px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
+    min-width: 200px;
+    display: flex;
     background: var(--card-bg);
-    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
   }
-  .view-toggle { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-  .view-toggle button { border: none; border-radius: 0; }
-  .view-toggle button + button { border-left: 1px solid var(--border); }
-  .view-toggle button.active { background: var(--accent); color: #fff; }
+  .search-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; opacity: 0.6; pointer-events: none; }
+  .search-wrap input {
+    flex: 1;
+    min-width: 0;
+    font: inherit;
+    padding: 9px 8px 9px 34px;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    outline: none;
+  }
+  .search-wrap select {
+    font: inherit;
+    font-size: 0.8rem;
+    border: none;
+    border-left: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    padding: 0 8px;
+    border-radius: 0 10px 10px 0;
+    cursor: pointer;
+  }
+  .view-toggle {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+  }
+  .view-toggle button { border: none; border-radius: 7px; background: transparent; padding: 6px 12px; }
+  .view-toggle button.active { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .search-status { font-size: 0.8rem; color: var(--muted); margin: -4px 0 14px; }
+  .search-status strong { color: var(--text); }
 
+  /* On this day */
   #onThisDay {
     display: none;
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-left: 4px solid var(--accent);
-    border-radius: 8px;
-    padding: 12px 14px;
+    background: linear-gradient(120deg,
+      color-mix(in srgb, var(--accent) 12%, var(--card-bg)),
+      color-mix(in srgb, var(--accent-2) 12%, var(--card-bg)));
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border));
+    border-radius: 12px;
+    padding: 12px 16px;
     margin-bottom: 16px;
+    box-shadow: var(--shadow);
   }
-  .otd-title { font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
-  .otd-item {
+  .otd-title { font-weight: 700; font-size: 0.75rem; margin-bottom: 4px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+  button.otd-item {
     display: block;
     width: 100%;
     text-align: left;
@@ -117,90 +230,160 @@
     color: var(--text);
     font-size: 0.9rem;
   }
-  .otd-item:hover { color: var(--accent); }
+  button.otd-item:hover { color: var(--accent); }
 
+  /* Timeline */
   .month-header {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--accent);
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin: 18px 0 8px;
+    letter-spacing: 0.06em;
+    margin: 22px 0 10px;
   }
+  .month-header::after { content: ''; flex: 1; height: 1px; background: color-mix(in srgb, var(--accent) 28%, transparent); }
   .month-header:first-child { margin-top: 0; }
 
   .entry-card {
+    --card-accent: var(--accent);
     background: var(--card-bg);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-left: 5px solid var(--card-accent);
+    border-radius: 12px;
     padding: 12px 14px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     display: flex;
-    gap: 12px;
+    gap: 14px;
     align-items: flex-start;
     cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform 0.12s, box-shadow 0.12s;
   }
-  .entry-card:hover { border-color: var(--accent); }
-  .entry-date { font-size: 0.75rem; color: var(--muted); white-space: nowrap; padding-top: 2px; min-width: 78px; }
+  .entry-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-hover); }
+  .date-badge {
+    flex-shrink: 0;
+    width: 52px;
+    padding: 6px 0;
+    border-radius: 10px;
+    text-align: center;
+    line-height: 1.1;
+    background: color-mix(in srgb, var(--card-accent) 15%, var(--card-bg));
+    color: color-mix(in srgb, var(--card-accent) 72%, var(--text));
+  }
+  .db-day { display: block; font-size: 1.35rem; font-weight: 700; }
+  .db-wd { display: block; font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
   .entry-main { flex: 1; min-width: 0; }
-  .entry-title { font-weight: 600; margin-bottom: 2px; }
-  .entry-snippet { font-size: 0.85rem; color: var(--text); white-space: pre-wrap; overflow: hidden; text-overflow: ellipsis; max-height: 3.2em; }
-  .thumb-strip { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .entry-title { font-weight: 650; font-size: 1.02rem; margin-bottom: 3px; }
+  .entry-snippet {
+    font-size: 0.86rem;
+    line-height: 1.45;
+    color: color-mix(in srgb, var(--text) 82%, var(--card-bg));
+    white-space: pre-wrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.76rem;
+    line-height: 1.2;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--text);
+    border: 1px solid transparent;
+    text-decoration: none;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .chip.mood { background: color-mix(in srgb, var(--chip-color) 18%, var(--card-bg)); border-color: color-mix(in srgb, var(--chip-color) 35%, transparent); }
+  .chip.weather { background: color-mix(in srgb, var(--accent-2) 14%, var(--card-bg)); }
+  a.chip:hover { border-color: var(--accent); }
+  .thumb-strip { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
   img.thumb {
-    width: 64px; height: 64px; object-fit: cover; border-radius: 6px;
+    width: 64px; height: 64px; object-fit: cover; border-radius: 8px;
     border: 1px solid var(--border); background: var(--bg); cursor: pointer;
   }
   .thumb-more {
-    width: 64px; height: 64px; border-radius: 6px; border: 1px solid var(--border);
+    width: 64px; height: 64px; border-radius: 8px; border: 1px solid var(--border);
     display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.8rem; background: var(--bg);
   }
   .entry-actions { display: flex; gap: 6px; flex-shrink: 0; }
   .entry-actions button { padding: 4px 9px; font-size: 0.9rem; }
 
-  #emptyState { text-align: center; color: var(--muted); padding: 40px 0; display: none; }
+  #emptyState { text-align: center; color: var(--muted); padding: 48px 0; display: none; line-height: 1.8; }
+  #emptyState .empty-icon { font-size: 2rem; }
 
   /* Calendar */
-  #calendarSection { display: none; }
+  #calendarSection {
+    display: none;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: var(--shadow);
+  }
   .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .cal-nav h2 { font-size: 1rem; margin: 0; }
+  .cal-nav h2 { font-size: 1.05rem; margin: 0; color: var(--accent); }
   .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-  .cal-dow { font-size: 0.7rem; color: var(--muted); text-align: center; padding-bottom: 4px; }
+  .cal-dow { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-align: center; padding-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
   .cal-day {
+    --tile-color: var(--accent);
     aspect-ratio: 1;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 8px;
     background: var(--card-bg);
     color: var(--text);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 3px;
+    gap: 2px;
     font-size: 0.8rem;
     position: relative;
     overflow: hidden;
     padding: 0;
   }
+  .cal-day.has-entry {
+    background: color-mix(in srgb, var(--tile-color) 16%, var(--card-bg));
+    border-color: color-mix(in srgb, var(--tile-color) 45%, var(--border));
+    font-weight: 600;
+  }
   .cal-day.today { border-color: var(--accent); border-width: 2px; }
   .cal-day.selected { box-shadow: inset 0 0 0 2px var(--accent); }
-  .cal-day .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); position: relative; z-index: 1; }
+  .cal-day .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--tile-color); position: relative; z-index: 1; }
+  .cal-mood { font-size: 1.1rem; line-height: 1; position: relative; z-index: 1; }
   .cal-day-photo {
     position: absolute; inset: 0; width: 100%; height: 100%;
     object-fit: cover; z-index: 0;
   }
-  .cal-day-num {
-    position: relative; z-index: 1;
-  }
+  .cal-day-num { position: relative; z-index: 1; }
   .cal-day.has-photo .cal-day-num {
     background: rgba(0, 0, 0, 0.55);
     color: #fff;
     border-radius: 4px;
     padding: 1px 5px;
   }
+  .cal-day.has-photo .cal-mood {
+    position: absolute; right: 3px; bottom: 3px;
+    font-size: 0.85rem;
+    background: rgba(255, 255, 255, 0.88);
+    border-radius: 50%;
+    padding: 2px;
+  }
 
   .filter-chip {
     display: inline-flex; align-items: center; gap: 6px;
-    background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px;
-    padding: 4px 10px; font-size: 0.8rem; color: var(--muted); margin-bottom: 14px;
+    background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); border-radius: 20px;
+    padding: 4px 10px; font-size: 0.8rem; color: var(--text); margin-bottom: 14px;
   }
-  .filter-chip button { border: none; background: none; padding: 0; color: var(--accent); font-size: 0.9rem; }
+  .filter-chip button { border: none; background: none; padding: 0; color: var(--accent); font-size: 0.85rem; font-weight: 600; min-height: 0; }
 
   /* Modals */
   .modal-overlay {
@@ -209,42 +392,80 @@
     align-items: center; justify-content: center; padding: 16px; z-index: 100;
   }
   .modal {
-    background: var(--card-bg);
-    border-radius: 10px;
-    padding: 18px;
-    width: 100%; max-width: 560px;
+    background:
+      linear-gradient(90deg, var(--accent), var(--accent-2)) top / 100% 5px no-repeat,
+      var(--card-bg);
+    border-radius: 14px;
+    padding: 22px 20px 18px;
+    width: 100%; max-width: 580px;
     max-height: 90vh;
     overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
   }
-  .modal h2 { margin: 0 0 14px; font-size: 1.05rem; }
+  .modal h2 { margin: 0 0 14px; font-size: 1.1rem; }
 
-  .viewer-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 4px; }
-  .viewer-header h2 { margin: 0 0 2px; }
+  .viewer-header { display: flex; align-items: flex-start; gap: 12px; }
+  .viewer-mood { font-size: 2.1rem; line-height: 1; }
+  .viewer-heading { flex: 1; min-width: 0; }
+  .viewer-heading h2 { margin: 0 0 2px; }
   .viewer-date { font-size: 0.8rem; color: var(--muted); }
   .viewer-header-actions { display: flex; gap: 6px; flex-shrink: 0; }
-  #viewerLocation { margin-bottom: 10px; }
-  .viewer-body { white-space: pre-wrap; line-height: 1.5; margin: 14px 0; }
+  #viewerChips:empty { display: none; }
+  .viewer-body { white-space: pre-wrap; line-height: 1.6; margin: 16px 0; }
   #viewerPhotos:empty { display: none; }
-  .field { margin-bottom: 12px; }
-  .field label { font-size: 0.75rem; color: var(--muted); display: block; margin-bottom: 4px; }
+
+  .field { margin-bottom: 14px; }
+  .field > label, .field-label { font-size: 0.75rem; font-weight: 600; color: var(--muted); display: block; margin-bottom: 5px; }
   .field input, .field textarea {
-    width: 100%; font: inherit; padding: 8px 10px; border-radius: 6px;
+    width: 100%; font: inherit; padding: 8px 10px; border-radius: 8px;
     border: 1px solid var(--border); background: var(--bg); color: var(--text);
   }
-  .field textarea { resize: vertical; min-height: 140px; }
-  .photo-drop {
-    border: 1px dashed var(--border);
-    border-radius: 8px;
-    padding: 10px;
-    margin-bottom: 14px;
+  .field input:focus, .field textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
   }
-  .photo-drop.drag-over { border-color: var(--accent); background: var(--bg); }
+  .field textarea { resize: vertical; min-height: 140px; line-height: 1.5; }
+  .field-row { display: grid; grid-template-columns: 170px 1fr; gap: 10px; }
+
+  .mood-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
+  button.mood-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 7px 4px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    color: var(--muted);
+    background: var(--card-bg);
+  }
+  button.mood-btn .me { font-size: 1.35rem; line-height: 1.15; }
+  button.mood-btn:hover { border-color: var(--mood-color); }
+  button.mood-btn.selected {
+    background: color-mix(in srgb, var(--mood-color) 18%, var(--card-bg));
+    border-color: var(--mood-color);
+    box-shadow: inset 0 0 0 1px var(--mood-color);
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .weather-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .weather-display { flex: 1; min-width: 160px; font-size: 0.85rem; color: var(--muted); }
+  .weather-note { font-size: 0.75rem; color: var(--muted); margin-top: 5px; }
+  .weather-note:empty { display: none; }
+
+  .photo-drop {
+    border: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--border));
+    border-radius: 10px;
+    padding: 10px;
+    background: color-mix(in srgb, var(--accent) 4%, var(--card-bg));
+  }
+  .photo-drop.drag-over { border-color: var(--accent); background: var(--accent-soft); }
   .photo-thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .photo-thumbs:empty { margin-bottom: 0; }
   .photo-thumb-wrap { position: relative; }
   .photo-thumb-wrap img.thumb { display: block; }
-  .thumb-remove {
+  button.thumb-remove {
     position: absolute; top: -6px; right: -6px;
-    width: 20px; height: 20px; border-radius: 50%;
+    width: 20px; height: 20px; min-height: 0; border-radius: 50%;
     background: var(--danger); color: #fff; border: none; padding: 0;
     line-height: 1; font-size: 0.9rem; display: flex; align-items: center; justify-content: center;
   }
@@ -255,58 +476,68 @@
   .location-row button { white-space: nowrap; }
   .location-meta {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    font-size: 0.78rem; color: var(--muted); margin-top: 6px; min-height: 1.2em;
+    font-size: 0.78rem; color: var(--muted); margin-top: 6px;
   }
+  .location-meta:empty { display: none; }
   .location-meta a { color: var(--accent); }
-  .location-meta button { padding: 2px 8px; font-size: 0.75rem; }
-  .location-hint {
-    font-size: 0.75rem; color: var(--muted); margin-top: 6px; line-height: 1.4;
-  }
+  .location-meta button { padding: 2px 8px; font-size: 0.75rem; min-height: 0; }
+  .location-hint { font-size: 0.75rem; color: var(--muted); margin-top: 6px; line-height: 1.4; }
   .location-hint code {
     background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
     padding: 1px 5px; font-size: 0.75rem;
   }
-  .loc-pill {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: 0.78rem; color: var(--accent); text-decoration: none;
-    margin-top: 6px;
-  }
-  .loc-pill:hover { text-decoration: underline; }
 
   #lightbox {
     display: none;
     position: fixed; inset: 0; background: var(--overlay);
     align-items: center; justify-content: center; z-index: 200; flex-direction: column;
   }
-  #lightbox img { max-width: 92vw; max-height: 78vh; object-fit: contain; border-radius: 4px; }
+  #lightbox img { max-width: 92vw; max-height: 78vh; object-fit: contain; border-radius: 6px; }
   .lightbox-controls { display: flex; align-items: center; gap: 16px; margin-top: 14px; }
-  .lightbox-controls button { background: rgba(255,255,255,0.15); color: #fff; border: none; padding: 8px 14px; }
+  .lightbox-controls button { background: rgba(255, 255, 255, 0.15); color: #fff; border: none; padding: 8px 14px; }
   #lightboxCounter { color: #fff; font-size: 0.85rem; }
-  #lightboxClose { position: absolute; top: 16px; right: 20px; background: rgba(255,255,255,0.15); color: #fff; border: none; }
+  #lightboxClose { position: absolute; top: 16px; right: 20px; background: rgba(255, 255, 255, 0.15); color: #fff; border: none; }
 
   @media (pointer: coarse) {
     button { padding: 10px 16px; min-height: 40px; }
     .entry-actions button, .view-toggle button { padding: 8px 12px; }
-    input, textarea { font-size: 16px; }
+    button.mood-btn { padding: 8px 4px; }
+    input, textarea, select { font-size: 16px; }
   }
   @media (max-width: 640px) {
     header { padding: 12px 14px; }
-    #fileControls { flex-direction: column; align-items: stretch; width: 100%; }
-    #fileControls button { width: 100%; }
+    .brand { order: 1; }
+    .theme-wrap { order: 2; }
+    #fileControls { order: 3; width: 100%; justify-content: space-between; }
     main { padding: 12px; }
-    .entry-card { flex-direction: column; }
+    .entry-card { flex-wrap: wrap; }
+    .entry-main { flex: 1 1 0; }
     .entry-actions { width: 100%; justify-content: flex-end; }
-    .entry-date { min-width: 0; }
+    .field-row { grid-template-columns: 1fr; gap: 0; }
+    .viewer-header { flex-wrap: wrap; }
+    .viewer-header-actions { order: -1; width: 100%; justify-content: flex-end; }
+    .location-row { flex-wrap: wrap; }
+    .location-row button { flex: 1; }
+    #calendarSection { padding: 10px; }
+    .calendar-grid { gap: 4px; }
+    .cal-mood { font-size: 0.95rem; }
   }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Journal</h1>
+  <div class="brand">
+    <h1>📔 Journal</h1>
+    <div class="header-date" id="headerDate"></div>
+  </div>
   <div id="fileControls">
     <span id="fileStatus">Not connected — using local browser storage</span>
-    <button id="connectBtn">Connect journal folder</button>
+    <button id="connectBtn" class="header-btn" type="button">Connect journal folder</button>
+  </div>
+  <div class="theme-wrap">
+    <button id="themeBtn" class="header-btn" type="button" aria-haspopup="true" aria-expanded="false" title="Change colors">🎨</button>
+    <div class="theme-menu" id="themeMenu" hidden></div>
   </div>
 </header>
 
@@ -314,13 +545,25 @@
 
 <main>
   <div class="toolbar">
-    <input type="search" id="searchInput" placeholder="Search entries…">
+    <div class="search-wrap">
+      <span class="search-icon" aria-hidden="true">🔍</span>
+      <input type="search" id="searchInput" placeholder="Search words, places, moods, weather, dates…" aria-label="Search entries">
+      <select id="searchScope" aria-label="What to search">
+        <option value="all">All</option>
+        <option value="text">Text</option>
+        <option value="places">Places</option>
+        <option value="mood">Mood</option>
+        <option value="weather">Weather</option>
+      </select>
+    </div>
     <div class="view-toggle">
       <button id="viewTimelineBtn" class="active" type="button">Timeline</button>
       <button id="viewCalendarBtn" type="button">Calendar</button>
     </div>
     <button id="newEntryBtn" class="primary" type="button">+ New entry</button>
   </div>
+
+  <div class="search-status" id="searchStatus" hidden></div>
 
   <div id="onThisDay"></div>
 
@@ -331,7 +574,7 @@
 
   <div id="timelineSection">
     <div id="timelineList"></div>
-    <div id="emptyState">No entries yet. Click "+ New entry" to write your first one.</div>
+    <div id="emptyState"></div>
   </div>
 
   <div id="calendarSection">
@@ -347,13 +590,23 @@
 <div class="modal-overlay" id="editorModal">
   <form class="modal" id="editorForm">
     <h2 id="editorHeading">New entry</h2>
-    <div class="field">
-      <label for="editorDate">Date</label>
-      <input type="date" id="editorDate" required>
+    <div class="field-row">
+      <div class="field">
+        <label for="editorDate">Date</label>
+        <input type="date" id="editorDate" required>
+      </div>
+      <div class="field">
+        <label for="editorTitle">Title</label>
+        <input type="text" id="editorTitle" placeholder="Give it a title (optional)">
+      </div>
     </div>
     <div class="field">
-      <label for="editorTitle">Title</label>
-      <input type="text" id="editorTitle" placeholder="(optional)">
+      <span class="field-label" id="moodLabel">How are you feeling?</span>
+      <div class="mood-grid" id="moodPicker" role="group" aria-labelledby="moodLabel"></div>
+    </div>
+    <div class="field">
+      <label for="editorBody">Entry</label>
+      <textarea id="editorBody" placeholder="What happened today?"></textarea>
     </div>
     <div class="field">
       <label for="locationLabelInput">Location</label>
@@ -365,11 +618,16 @@
       <div class="location-hint" id="locationHint" style="display:none;">GPS needs the app running via <code>start-journal.bat</code> in this folder instead of opening index.html directly — Chrome blocks location on files opened straight from disk. You can still type a location above.</div>
     </div>
     <div class="field">
-      <label for="editorBody">Entry</label>
-      <textarea id="editorBody" placeholder="What happened today?"></textarea>
+      <span class="field-label">Weather</span>
+      <div class="weather-row">
+        <div class="weather-display" id="weatherDisplay"></div>
+        <button type="button" id="weatherBtn">🌤️ Add weather</button>
+        <button type="button" id="clearWeatherBtn">Clear</button>
+      </div>
+      <div class="weather-note" id="weatherNote"></div>
     </div>
     <div class="field">
-      <label>Photos</label>
+      <span class="field-label">Photos</span>
       <div class="photo-drop" id="photoDrop">
         <div class="photo-thumbs" id="photoThumbs"></div>
         <button type="button" id="addPhotosBtn">+ Add photos</button>
@@ -386,7 +644,8 @@
 <div class="modal-overlay" id="viewerModal">
   <div class="modal" id="viewerContent">
     <div class="viewer-header">
-      <div>
+      <div class="viewer-mood" id="viewerMood"></div>
+      <div class="viewer-heading">
         <h2 id="viewerTitle"></h2>
         <div class="viewer-date" id="viewerDate"></div>
       </div>
@@ -395,7 +654,7 @@
         <button type="button" id="viewerCloseBtn" title="Close">Close ×</button>
       </div>
     </div>
-    <div class="location-meta" id="viewerLocation"></div>
+    <div class="chips" id="viewerChips"></div>
     <div class="viewer-body" id="viewerBody"></div>
     <div class="photo-thumbs" id="viewerPhotos"></div>
   </div>
@@ -433,6 +692,69 @@
 
   const el = id => document.getElementById(id);
 
+  const MOODS = {
+    happy:    { emoji: '😊', label: 'Happy',    color: '#f2b418' },
+    excited:  { emoji: '🤩', label: 'Excited',  color: '#ff7a1a' },
+    loved:    { emoji: '🥰', label: 'Loved',    color: '#ec5f9b' },
+    grateful: { emoji: '🙏', label: 'Grateful', color: '#19a7a0' },
+    relieved: { emoji: '😌', label: 'Relieved', color: '#3dbb6b' },
+    hopeful:  { emoji: '🤞', label: 'Hopeful',  color: '#7ac142' },
+    proud:    { emoji: '😎', label: 'Proud',    color: '#2b9bd6' },
+    neutral:  { emoji: '😐', label: 'Neutral',  color: '#9aa0aa' },
+    tired:    { emoji: '😴', label: 'Tired',    color: '#6b7bd9' },
+    confused: { emoji: '😕', label: 'Confused', color: '#a06cd5' },
+    anxious:  { emoji: '😰', label: 'Anxious',  color: '#e0952e' },
+    stressed: { emoji: '😫', label: 'Stressed', color: '#d9713a' },
+    sad:      { emoji: '😢', label: 'Sad',      color: '#3b82d9' },
+    angry:    { emoji: '😠', label: 'Angry',    color: '#e04848' },
+    sick:     { emoji: '🤒', label: 'Sick',     color: '#8ea83a' },
+  };
+
+  const THEMES = {
+    ocean:    { name: 'Ocean',    swatch: ['#2667c9', '#129e94'] },
+    sunset:   { name: 'Sunset',   swatch: ['#d9482f', '#e57c2f'] },
+    forest:   { name: 'Forest',   swatch: ['#2a7f4d', '#5f9a2e'] },
+    lavender: { name: 'Lavender', swatch: ['#6d4fd6', '#c9458a'] },
+    classic:  { name: 'Classic',  swatch: ['#3b6ef6', '#5b7ff5'] },
+  };
+
+  // WMO weather codes used by Open-Meteo: [codes, day emoji, night emoji, label, extra search words]
+  const WEATHER_CODES = [
+    [[0], '☀️', '🌙', 'Clear', 'sunny sun clear'],
+    [[1], '🌤️', '🌙', 'Mostly clear', 'sunny sun clear'],
+    [[2], '⛅', '☁️', 'Partly cloudy', 'cloudy clouds sun'],
+    [[3], '☁️', '☁️', 'Overcast', 'cloudy clouds gray grey'],
+    [[45, 48], '🌫️', '🌫️', 'Fog', 'foggy mist'],
+    [[51, 53, 55], '🌦️', '🌧️', 'Drizzle', 'rain rainy wet'],
+    [[56, 57], '🌧️', '🌧️', 'Freezing drizzle', 'rain ice icy freezing'],
+    [[61], '🌧️', '🌧️', 'Light rain', 'rain rainy wet'],
+    [[63], '🌧️', '🌧️', 'Rain', 'rain rainy wet'],
+    [[65], '🌧️', '🌧️', 'Heavy rain', 'rain rainy wet storm'],
+    [[66, 67], '🌧️', '🌧️', 'Freezing rain', 'rain ice icy freezing'],
+    [[71], '🌨️', '🌨️', 'Light snow', 'snow snowy'],
+    [[73], '🌨️', '🌨️', 'Snow', 'snow snowy'],
+    [[75], '❄️', '❄️', 'Heavy snow', 'snow snowy blizzard'],
+    [[77], '🌨️', '🌨️', 'Snow grains', 'snow snowy'],
+    [[80, 81], '🌦️', '🌧️', 'Rain showers', 'rain rainy showers wet'],
+    [[82], '⛈️', '⛈️', 'Heavy showers', 'rain rainy showers storm'],
+    [[85, 86], '🌨️', '🌨️', 'Snow showers', 'snow snowy'],
+    [[95], '⛈️', '⛈️', 'Thunderstorm', 'storm thunder lightning rain'],
+    [[96, 99], '⛈️', '⛈️', 'Thunderstorm with hail', 'storm thunder lightning hail'],
+  ];
+
+  const US_STATES = {
+    alabama: 'al', alaska: 'ak', arizona: 'az', arkansas: 'ar', california: 'ca', colorado: 'co',
+    connecticut: 'ct', delaware: 'de', florida: 'fl', georgia: 'ga', hawaii: 'hi', idaho: 'id',
+    illinois: 'il', indiana: 'in', iowa: 'ia', kansas: 'ks', kentucky: 'ky', louisiana: 'la',
+    maine: 'me', maryland: 'md', massachusetts: 'ma', michigan: 'mi', minnesota: 'mn',
+    mississippi: 'ms', missouri: 'mo', montana: 'mt', nebraska: 'ne', nevada: 'nv',
+    'new hampshire': 'nh', 'new jersey': 'nj', 'new mexico': 'nm', 'new york': 'ny',
+    'north carolina': 'nc', 'north dakota': 'nd', ohio: 'oh', oklahoma: 'ok', oregon: 'or',
+    pennsylvania: 'pa', 'rhode island': 'ri', 'south carolina': 'sc', 'south dakota': 'sd',
+    tennessee: 'tn', texas: 'tx', utah: 'ut', vermont: 'vt', virginia: 'va', washington: 'wa',
+    'west virginia': 'wv', wisconsin: 'wi', wyoming: 'wy', 'district of columbia': 'dc',
+  };
+
   function uuid() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -454,6 +776,45 @@
     d.textContent = str == null ? '' : str;
     return d.innerHTML;
   }
+
+  // ---------- Theme ----------
+  function applyTheme(key) {
+    if (!THEMES[key]) key = 'ocean';
+    document.documentElement.dataset.theme = key;
+    el('themeColorMeta').setAttribute('content', THEMES[key].swatch[0]);
+    try { localStorage.setItem('personal-journal-theme', key); } catch (e) { /* storage unavailable */ }
+  }
+
+  function renderThemeMenu() {
+    const current = document.documentElement.dataset.theme;
+    el('themeMenu').innerHTML = '<div class="theme-menu-title">Color theme</div>' + Object.entries(THEMES).map(([key, t]) => `
+      <button type="button" class="theme-option${key === current ? ' active' : ''}" data-theme-key="${key}">
+        <span class="swatch" style="background: linear-gradient(135deg, ${t.swatch[0]}, ${t.swatch[1]})"></span>
+        <span>${t.name}${key === current ? ' ✓' : ''}</span>
+      </button>`).join('');
+  }
+
+  function closeThemeMenu() {
+    el('themeMenu').hidden = true;
+    el('themeBtn').setAttribute('aria-expanded', 'false');
+  }
+
+  el('themeBtn').addEventListener('click', e => {
+    e.stopPropagation();
+    const opening = el('themeMenu').hidden;
+    if (opening) renderThemeMenu();
+    el('themeMenu').hidden = !opening;
+    el('themeBtn').setAttribute('aria-expanded', String(opening));
+  });
+  el('themeMenu').addEventListener('click', e => {
+    const opt = e.target.closest('.theme-option');
+    if (!opt) return;
+    applyTheme(opt.dataset.themeKey);
+    renderThemeMenu();
+  });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.theme-wrap')) closeThemeMenu();
+  });
 
   // ---------- IndexedDB handle persistence ----------
   function idbOpen() {
@@ -674,6 +1035,38 @@
     renderEditorPhotos();
   }
 
+  // ---------- Shared entry display ----------
+  function locationText(loc) {
+    if (!loc) return '';
+    if (loc.label) return loc.label;
+    if (loc.lat != null) return `${loc.lat.toFixed(3)}, ${loc.lng.toFixed(3)}`;
+    return '';
+  }
+
+  function chipsHtml(entry) {
+    const items = chipItemsHtml(entry);
+    return items ? `<div class="chips">${items}</div>` : '';
+  }
+
+  function chipItemsHtml(entry) {
+    const parts = [];
+    const mood = MOODS[entry.mood];
+    if (mood) {
+      parts.push(`<span class="chip mood" style="--chip-color:${mood.color}">${mood.emoji} ${mood.label}</span>`);
+    }
+    if (entry.weather) {
+      parts.push(`<span class="chip weather">${escapeHtml(weatherText(entry.weather))}</span>`);
+    }
+    const locLabel = locationText(entry.location);
+    if (locLabel) {
+      const url = mapsUrlFor(entry.location);
+      parts.push(url
+        ? `<a class="chip loc-pill" href="${url}" target="_blank" rel="noopener noreferrer">📍 ${escapeHtml(locLabel)}</a>`
+        : `<span class="chip">📍 ${escapeHtml(locLabel)}</span>`);
+    }
+    return parts.join('');
+  }
+
   // ---------- Editor ----------
   function blankEntry(dateStr) {
     return {
@@ -685,23 +1078,46 @@
       body: '',
       photos: [],
       location: null,
+      mood: null,
+      weather: null,
     };
   }
 
   function openEditor(entry) {
     draft = entry ? JSON.parse(JSON.stringify(entry)) : blankEntry();
+    if (draft.mood === undefined) draft.mood = null;
+    if (draft.weather === undefined) draft.weather = null;
     sessionAddedPhotos = [];
     pendingDeletes = [];
-    el('editorHeading').textContent = entry ? 'Edit entry' : 'New entry';
+    const isExisting = !!entry && data.entries.some(x => x.id === entry.id);
+    el('editorHeading').textContent = isExisting ? 'Edit entry' : 'New entry';
     el('editorDate').value = draft.date;
     el('editorTitle').value = draft.title || '';
     el('editorBody').value = draft.body || '';
     el('locationLabelInput').value = draft.location?.label || '';
+    renderMoodPicker();
     renderEditorPhotos();
     renderLocationMeta();
+    renderWeatherMeta();
     el('editorModal').style.display = 'flex';
     el('editorTitle').focus();
   }
+
+  // ---------- Mood ----------
+  function renderMoodPicker() {
+    el('moodPicker').innerHTML = Object.entries(MOODS).map(([key, m]) => `
+      <button type="button" class="mood-btn${draft.mood === key ? ' selected' : ''}" data-mood="${key}"
+        style="--mood-color:${m.color}" aria-pressed="${draft.mood === key}" aria-label="${m.label}">
+        <span class="me" aria-hidden="true">${m.emoji}</span><span>${m.label}</span>
+      </button>`).join('');
+  }
+
+  el('moodPicker').addEventListener('click', e => {
+    const btn = e.target.closest('.mood-btn');
+    if (!btn || !draft) return;
+    draft.mood = draft.mood === btn.dataset.mood ? null : btn.dataset.mood;
+    renderMoodPicker();
+  });
 
   // ---------- Location ----------
   function mapsUrlFor(location) {
@@ -731,6 +1147,15 @@
       console.error('Reverse geocode failed', e);
       return null;
     }
+  }
+
+  async function forwardGeocode(query) {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`, {
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!res.ok) throw new Error('place lookup failed');
+    const results = await res.json();
+    return results[0] ? { lat: Number(results[0].lat), lng: Number(results[0].lon) } : null;
   }
 
   function renderLocationMeta() {
@@ -763,37 +1188,195 @@
     renderLocationMeta();
   });
 
-  el('useLocationBtn').addEventListener('click', () => {
-    if (!('geolocation' in navigator)) {
-      alert('Geolocation is not available in this browser. Type a location manually instead.');
-      return;
+  // Gets GPS coordinates, looks up a place name, and stores both on the draft.
+  function captureCurrentLocation() {
+    return new Promise((resolve, reject) => {
+      if (!('geolocation' in navigator)) {
+        reject(new Error('Geolocation is not available in this browser.'));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(async pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const name = await reverseGeocode(lat, lng);
+        if (!draft) { reject(new Error('Editor was closed.')); return; }
+        draft.location = { lat, lng, label: name || `${lat.toFixed(4)}, ${lng.toFixed(4)}` };
+        el('locationLabelInput').value = draft.location.label;
+        renderLocationMeta();
+        resolve(draft.location);
+      }, reject, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+    });
+  }
+
+  function isGeolocationError(err) {
+    return err && typeof err.code === 'number' && 'PERMISSION_DENIED' in err;
+  }
+
+  function geolocationErrorMessage(err) {
+    if (err.code === err.PERMISSION_DENIED && location.protocol === 'file:') {
+      return 'Chrome blocks GPS access on files opened directly from disk, even when location is allowed in settings. Double-click start-journal.bat in this folder to open the app at http://localhost instead — then GPS will work. You can still type a location manually.';
     }
+    return 'Could not get your location (' + err.message + '). You can type a location manually instead.';
+  }
+
+  el('useLocationBtn').addEventListener('click', async () => {
     const btn = el('useLocationBtn');
     const originalText = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Locating…';
-    navigator.geolocation.getCurrentPosition(async pos => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      draft.location = { lat, lng, label: '' };
-      btn.textContent = 'Looking up place name…';
-      const name = await reverseGeocode(lat, lng);
-      draft.location.label = name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-      el('locationLabelInput').value = draft.location.label;
-      renderLocationMeta();
-      btn.disabled = false;
-      btn.textContent = originalText;
-    }, err => {
-      console.error('Geolocation error', err);
-      if (err.code === err.PERMISSION_DENIED && location.protocol === 'file:') {
-        alert('Chrome blocks GPS access on files opened directly from disk, even when location is allowed in settings. Double-click start-journal.bat in this folder to open the app at http://localhost instead — then GPS will work. You can still type a location manually below.');
-      } else {
-        alert('Could not get your location (' + err.message + '). You can type a location manually instead.');
+    try {
+      await captureCurrentLocation();
+      // "Current location" on today's entry is a natural moment to grab current weather too.
+      if (draft && !draft.weather && el('editorDate').value === formatDate(new Date())) {
+        await addWeather({ quiet: true });
       }
+    } catch (err) {
+      console.error('Geolocation error', err);
+      alert(isGeolocationError(err) ? geolocationErrorMessage(err) : err.message);
+    } finally {
       btn.disabled = false;
       btn.textContent = originalText;
-    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+    }
   });
+
+  // ---------- Weather ----------
+  function weatherInfo(code, isDay = true) {
+    const match = WEATHER_CODES.find(([codes]) => codes.includes(code));
+    if (!match) return { emoji: '🌡️', label: 'Weather', words: '' };
+    const [, dayEmoji, nightEmoji, label, words] = match;
+    return { emoji: isDay ? dayEmoji : nightEmoji, label, words };
+  }
+
+  function weatherText(w) {
+    const info = weatherInfo(w.code, w.isDay !== false);
+    const temps = w.kind === 'current' ? `${w.temp}°F` : `${w.high}° / ${w.low}°F`;
+    return `${info.emoji} ${temps} · ${w.summary || info.label}`;
+  }
+
+  function weatherSearchWords(w) {
+    const info = weatherInfo(w.code);
+    const temp = w.kind === 'current' ? w.temp : w.high;
+    const feel = temp >= 85 ? 'hot' : temp <= 32 ? 'freezing cold' : temp <= 45 ? 'cold' : '';
+    return [w.summary || info.label, info.words, feel].join(' ');
+  }
+
+  async function fetchJson(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`weather service returned ${res.status}`);
+    return res.json();
+  }
+
+  // Current conditions for today; that day's high/low for past dates.
+  async function fetchWeather(dateStr, lat, lng) {
+    const base = {
+      latitude: lat.toFixed(4),
+      longitude: lng.toFixed(4),
+      temperature_unit: 'fahrenheit',
+      timezone: 'auto',
+    };
+    if (dateStr === formatDate(new Date())) {
+      const params = new URLSearchParams({ ...base, current: 'temperature_2m,weather_code,is_day' });
+      const result = await fetchJson(`https://api.open-meteo.com/v1/forecast?${params}`);
+      const c = result.current;
+      return {
+        kind: 'current',
+        date: dateStr,
+        code: c.weather_code,
+        temp: Math.round(c.temperature_2m),
+        isDay: c.is_day === 1,
+        summary: weatherInfo(c.weather_code).label,
+      };
+    }
+    const params = new URLSearchParams({
+      ...base,
+      daily: 'weather_code,temperature_2m_max,temperature_2m_min',
+      start_date: dateStr,
+      end_date: dateStr,
+    });
+    let result;
+    try {
+      // Recent past days are served by the forecast API...
+      result = await fetchJson(`https://api.open-meteo.com/v1/forecast?${params}`);
+    } catch (e) {
+      // ...older dates come from the historical archive.
+      result = await fetchJson(`https://archive-api.open-meteo.com/v1/archive?${params}`);
+    }
+    const d = result.daily;
+    if (!d || d.weather_code[0] == null) throw new Error('no weather data for that date yet');
+    return {
+      kind: 'daily',
+      date: dateStr,
+      code: d.weather_code[0],
+      high: Math.round(d.temperature_2m_max[0]),
+      low: Math.round(d.temperature_2m_min[0]),
+      summary: weatherInfo(d.weather_code[0]).label,
+    };
+  }
+
+  async function addWeather({ quiet = false } = {}) {
+    const dateStr = el('editorDate').value || formatDate(new Date());
+    if (dateStr > formatDate(new Date())) {
+      if (!quiet) alert('Weather can only be added for today or past dates.');
+      return;
+    }
+    const btn = el('weatherBtn');
+    btn.disabled = true;
+    el('weatherDisplay').textContent = 'Checking the weather…';
+    try {
+      let loc = draft.location;
+      if (!loc || (loc.lat == null && !loc.label)) {
+        loc = await captureCurrentLocation();
+      } else if (loc.lat == null) {
+        const hit = await forwardGeocode(loc.label);
+        if (!hit) throw new Error(`couldn't find "${loc.label}" on the map — try a city name`);
+        loc.lat = hit.lat;
+        loc.lng = hit.lng;
+        renderLocationMeta();
+      }
+      const weather = await fetchWeather(dateStr, loc.lat, loc.lng);
+      if (draft) draft.weather = weather;
+    } catch (err) {
+      console.error('Weather lookup failed', err);
+      if (!quiet) {
+        alert(isGeolocationError(err)
+          ? geolocationErrorMessage(err) + '\n\nWeather needs a location — add one above, then try again.'
+          : 'Could not get the weather: ' + err.message);
+      }
+    } finally {
+      btn.disabled = false;
+      if (draft) renderWeatherMeta();
+    }
+  }
+
+  function renderWeatherMeta() {
+    const display = el('weatherDisplay');
+    const note = el('weatherNote');
+    const w = draft.weather;
+    if (!w) {
+      display.textContent = 'No weather added';
+      el('weatherBtn').textContent = '🌤️ Add weather';
+      el('clearWeatherBtn').style.display = 'none';
+      note.textContent = '';
+      return;
+    }
+    display.innerHTML = `<span class="chip weather">${escapeHtml(weatherText(w))}</span>`;
+    el('weatherBtn').textContent = '↻ Refresh';
+    el('clearWeatherBtn').style.display = '';
+    const entryDate = el('editorDate').value;
+    if (w.date && entryDate && w.date !== entryDate) {
+      const when = parseLocalDate(w.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      note.textContent = `This weather is for ${when}. Tap Refresh to get it for this entry's date.`;
+    } else {
+      note.textContent = w.kind === 'current' ? 'Conditions when you added it.' : "That day's high / low.";
+    }
+  }
+
+  el('weatherBtn').addEventListener('click', () => addWeather());
+  el('clearWeatherBtn').addEventListener('click', () => {
+    draft.weather = null;
+    renderWeatherMeta();
+  });
+  el('editorDate').addEventListener('change', () => { if (draft) renderWeatherMeta(); });
 
   async function cancelEditor() {
     for (const path of sessionAddedPhotos) await deletePhotoFile(path);
@@ -808,19 +1391,13 @@
 
   function openViewer(entry) {
     viewingId = entry.id;
+    const mood = MOODS[entry.mood];
+    el('viewerMood').textContent = mood ? mood.emoji : '📝';
     el('viewerTitle').textContent = entry.title || 'Untitled entry';
     const d = parseLocalDate(entry.date);
     el('viewerDate').textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    el('viewerChips').innerHTML = chipItemsHtml(entry);
     el('viewerBody').textContent = entry.body || '';
-
-    const locBox = el('viewerLocation');
-    if (entry.location && (entry.location.label || entry.location.lat != null)) {
-      const url = mapsUrlFor(entry.location);
-      const coordsText = entry.location.lat != null ? `${entry.location.lat.toFixed(4)}, ${entry.location.lng.toFixed(4)}` : '';
-      locBox.innerHTML = `<span>📍 ${escapeHtml(entry.location.label || coordsText)}</span>${url ? `<a href="${url}" target="_blank" rel="noopener noreferrer">Open in Maps ↗</a>` : ''}`;
-    } else {
-      locBox.innerHTML = '';
-    }
 
     const photosBox = el('viewerPhotos');
     photosBox.innerHTML = entry.photos.map(p => `<img class="thumb" data-photo="${p}">`).join('');
@@ -892,6 +1469,8 @@
     draft.body = el('editorBody').value;
     if (draft.location) draft.location.label = (draft.location.label || '').trim();
     if (draft.location && !draft.location.label && draft.location.lat == null) draft.location = null;
+    if (!MOODS[draft.mood]) draft.mood = null;
+    if (!draft.weather) draft.weather = null;
     draft.updatedAt = new Date().toISOString();
 
     const idx = data.entries.findIndex(x => x.id === draft.id);
@@ -946,7 +1525,9 @@
   el('lightboxClose').addEventListener('click', closeLightbox);
   el('lightbox').addEventListener('click', e => { if (e.target.id === 'lightbox') closeLightbox(); });
   document.addEventListener('keydown', e => {
-    if (el('lightbox').style.display === 'flex') {
+    if (e.key === 'Escape' && !el('themeMenu').hidden) {
+      closeThemeMenu();
+    } else if (el('lightbox').style.display === 'flex') {
       if (e.key === 'Escape') closeLightbox();
       else if (e.key === 'ArrowLeft') el('lightboxPrev').click();
       else if (e.key === 'ArrowRight') el('lightboxNext').click();
@@ -968,23 +1549,78 @@
   el('viewTimelineBtn').addEventListener('click', () => { setView('timeline'); renderCurrentView(); });
   el('viewCalendarBtn').addEventListener('click', () => { setView('calendar'); renderCurrentView(); });
 
-  el('searchInput').addEventListener('input', () => {
-    if (el('searchInput').value.trim() && view !== 'timeline') { setView('timeline'); }
+  function onSearchChanged() {
+    if (el('searchInput').value.trim() && view !== 'timeline') setView('timeline');
     renderCurrentView();
-  });
+  }
+  el('searchInput').addEventListener('input', onSearchChanged);
+  el('searchScope').addEventListener('change', onSearchChanged);
 
   el('clearDateFilter').addEventListener('click', () => {
     dateFilter = null;
     renderCurrentView();
   });
 
+  // ---------- Search ----------
+  function normalizeText(s) {
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+  function words(s) {
+    return normalizeText(s).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  }
+
+  // Extra words so "MI", "USA", etc. find places stored by their full names.
+  function placeAliases(label) {
+    const n = normalizeText(label);
+    const extra = [];
+    for (const [name, abbr] of Object.entries(US_STATES)) {
+      if (new RegExp(`\\b${name}\\b`).test(n)) extra.push(abbr);
+    }
+    if (n.includes('united states')) extra.push('usa', 'us', 'america');
+    if (n.includes('united kingdom')) extra.push('uk', 'britain');
+    return extra.join(' ');
+  }
+
+  function searchableWords(entry, scope) {
+    const parts = [];
+    const all = scope === 'all';
+    if (all || scope === 'text') parts.push(entry.title, entry.body);
+    if ((all || scope === 'places') && entry.location && entry.location.label) {
+      parts.push(entry.location.label, placeAliases(entry.location.label));
+    }
+    if ((all || scope === 'mood') && MOODS[entry.mood]) parts.push(MOODS[entry.mood].label);
+    if ((all || scope === 'weather') && entry.weather) parts.push(weatherSearchWords(entry.weather));
+    if (all) {
+      const d = parseLocalDate(entry.date);
+      parts.push(d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }), entry.date);
+    }
+    return words(parts.join(' '));
+  }
+
+  // Every search word must match the start of some word in the entry.
+  function matchesSearch(entry, terms, scope) {
+    const entryWords = searchableWords(entry, scope);
+    return terms.every(term => entryWords.some(w => w.startsWith(term)));
+  }
+
   function getFilteredSortedEntries() {
-    const q = el('searchInput').value.trim().toLowerCase();
+    const terms = words(el('searchInput').value);
+    const scope = el('searchScope').value;
     let list = [...data.entries];
-    if (q) list = list.filter(e => (e.title || '').toLowerCase().includes(q) || (e.body || '').toLowerCase().includes(q));
+    if (terms.length) list = list.filter(e => matchesSearch(e, terms, scope));
     if (dateFilter) list = list.filter(e => e.date === dateFilter);
     list.sort((a, b) => b.date.localeCompare(a.date) || new Date(b.createdAt) - new Date(a.createdAt));
     return list;
+  }
+
+  function renderSearchStatus(shownCount) {
+    const status = el('searchStatus');
+    const query = el('searchInput').value.trim();
+    if (!query) { status.hidden = true; return; }
+    const scope = el('searchScope').value;
+    const scopeText = { all: 'everywhere', text: 'in entry text', places: 'in places', mood: 'in moods', weather: 'in weather' }[scope];
+    status.hidden = false;
+    status.innerHTML = `<strong>${shownCount}</strong> of ${data.entries.length} entries match “${escapeHtml(query)}” ${scopeText}`;
   }
 
   function renderDateFilterChip() {
@@ -1002,7 +1638,17 @@
     const container = el('timelineList');
     container.innerHTML = '';
     const list = getFilteredSortedEntries();
-    el('emptyState').style.display = list.length ? 'none' : 'block';
+    renderSearchStatus(list.length);
+
+    const empty = el('emptyState');
+    if (list.length) {
+      empty.style.display = 'none';
+    } else {
+      empty.style.display = 'block';
+      empty.innerHTML = data.entries.length
+        ? '<div class="empty-icon">🔍</div>No entries match your search.'
+        : '<div class="empty-icon">📔</div>No entries yet. Click “+ New entry” to write your first one.';
+    }
 
     let lastMonthKey = null;
     list.forEach(entry => {
@@ -1016,16 +1662,21 @@
         container.appendChild(header);
       }
 
+      const mood = MOODS[entry.mood];
       const snippet = entry.body || '';
       const card = document.createElement('div');
       card.className = 'entry-card';
       card.dataset.id = entry.id;
+      if (mood) card.style.setProperty('--card-accent', mood.color);
       card.innerHTML = `
-        <div class="entry-date">${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+        <div class="date-badge">
+          <span class="db-day">${d.getDate()}</span>
+          <span class="db-wd">${d.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+        </div>
         <div class="entry-main">
           ${entry.title ? `<div class="entry-title">${escapeHtml(entry.title)}</div>` : ''}
           ${snippet ? `<div class="entry-snippet">${escapeHtml(snippet)}</div>` : ''}
-          ${entry.location ? `<a class="loc-pill" href="${mapsUrlFor(entry.location)}" target="_blank" rel="noopener noreferrer">📍 ${escapeHtml(entry.location.label || `${entry.location.lat.toFixed(3)}, ${entry.location.lng.toFixed(3)}`)}</a>` : ''}
+          ${chipsHtml(entry)}
           ${entry.photos.length ? `<div class="thumb-strip">${
             entry.photos.slice(0, 4).map((p, i) => `<img class="thumb" data-photo="${p}" data-idx="${i}">`).join('')
           }${entry.photos.length > 4 ? `<div class="thumb-more">+${entry.photos.length - 4}</div>` : ''}</div>` : ''}
@@ -1095,17 +1746,21 @@
       const dateStr = formatDate(new Date(year, month, day));
       const has = entriesByDate[dateStr];
       const coverPhoto = has ? has.map(e => e.photos[0]).find(Boolean) : null;
+      const moodEntry = has ? has.find(e => MOODS[e.mood]) : null;
+      const mood = moodEntry ? MOODS[moodEntry.mood] : null;
       const cell = document.createElement('button');
       cell.type = 'button';
       cell.className = 'cal-day'
+        + (has ? ' has-entry' : '')
         + (dateStr === todayStr ? ' today' : '')
         + (dateStr === dateFilter ? ' selected' : '')
         + (coverPhoto ? ' has-photo' : '');
       cell.dataset.date = dateStr;
+      if (mood) cell.style.setProperty('--tile-color', mood.color);
       cell.innerHTML = `
         ${coverPhoto ? `<img class="cal-day-photo" data-photo="${coverPhoto}">` : ''}
         <span class="cal-day-num">${day}</span>
-        ${has && !coverPhoto ? '<div class="dot"></div>' : ''}
+        ${mood ? `<span class="cal-mood" title="${mood.label}">${mood.emoji}</span>` : (has && !coverPhoto ? '<div class="dot"></div>' : '')}
       `;
       container.appendChild(cell);
     }
@@ -1148,10 +1803,11 @@
 
     if (!matches.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
     box.style.display = 'block';
-    box.innerHTML = '<div class="otd-title">On this day</div>' + matches.map(e => {
+    box.innerHTML = '<div class="otd-title">✨ On this day</div>' + matches.map(e => {
       const years = today.getFullYear() - Number(e.date.slice(0, 4));
       const label = e.title || (e.body || '').slice(0, 60) || 'Untitled entry';
-      return `<button type="button" class="otd-item" data-id="${e.id}">${years} year${years === 1 ? '' : 's'} ago — ${escapeHtml(label)}</button>`;
+      const mood = MOODS[e.mood];
+      return `<button type="button" class="otd-item" data-id="${e.id}">${mood ? mood.emoji + ' ' : ''}${years} year${years === 1 ? '' : 's'} ago — ${escapeHtml(label)}</button>`;
     }).join('');
   }
   el('onThisDay').addEventListener('click', e => {
@@ -1163,11 +1819,17 @@
 
   function renderCurrentView() {
     renderOnThisDay();
-    if (view === 'timeline') renderTimeline();
-    else renderCalendar();
+    if (view === 'timeline') {
+      renderTimeline();
+    } else {
+      el('searchStatus').hidden = true;
+      renderCalendar();
+    }
   }
 
   // ---------- Init ----------
+  applyTheme(document.documentElement.dataset.theme);
+  el('headerDate').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
   if (location.protocol === 'file:') {
     el('locationHint').style.display = 'block';
   }
