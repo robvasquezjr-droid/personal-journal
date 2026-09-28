@@ -632,7 +632,7 @@
         <button type="button" id="useLocationBtn">📍 Use current location</button>
       </div>
       <div class="location-meta" id="locationMeta"></div>
-      <div class="location-hint" id="locationHint" style="display:none;">GPS needs the app running via <code>start-journal.bat</code> in this folder instead of opening index.html directly — Chrome blocks location on files opened straight from disk. You can still type a location above.</div>
+      <div class="location-hint" id="locationHint" style="display:none;"></div>
     </div>
     <div class="field">
       <span class="field-label">Weather</span>
@@ -1229,11 +1229,34 @@
     return err && typeof err.code === 'number' && 'PERMISSION_DENIED' in err;
   }
 
-  function geolocationErrorMessage(err) {
-    if (err.code === err.PERMISSION_DENIED && location.protocol === 'file:') {
-      return 'Chrome blocks GPS access on files opened directly from disk, even when location is allowed in settings. Double-click start-journal.bat in this folder to open the app at http://localhost instead — then GPS will work. You can still type a location manually.';
+  const HOSTED_URL = 'https://robvasquezjr-droid.github.io/personal-journal/';
+  const isPhone = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  // Opened from a file (file://, or content:// from the Drive/Files app) rather than a web address.
+  const openedFromFile = !/^https?:$/.test(location.protocol);
+
+  function openedFromFileAdvice() {
+    return isPhone
+      ? `Location can't work when the journal is opened from a file on your phone. Open ${HOSTED_URL} in Chrome instead (bookmark it or add it to your home screen).`
+      : `Chrome blocks location on files opened straight from disk. Double-click start-journal.bat in the journal folder, or open ${HOSTED_URL} instead.`;
+  }
+
+  // Chrome reports every refusal as "User denied Geolocation"; work out which kind it was.
+  async function geolocationErrorMessage(err) {
+    const manual = ' You can still type a location manually.';
+    if (err.code === err.TIMEOUT) {
+      return 'Finding your location took too long. Check that location is turned on for your device, then try again.' + manual;
     }
-    return 'Could not get your location (' + err.message + '). You can type a location manually instead.';
+    if (err.code !== err.PERMISSION_DENIED) {
+      return 'Could not get your location (' + err.message + '). Check that location is turned on for your device.' + manual;
+    }
+    if (openedFromFile) return openedFromFileAdvice() + manual;
+
+    let state = 'unknown';
+    try { state = (await navigator.permissions.query({ name: 'geolocation' })).state; } catch (e) { /* not supported */ }
+    if (state === 'denied') {
+      return 'Chrome has location blocked for this site. To fix it: tap the icon just left of the web address → Permissions (or Site settings) → Location → Allow, then reload the page.' + manual;
+    }
+    return 'Location was refused before Chrome could ask you. Check that your phone lets Chrome use location (phone Settings → Apps → Chrome → Permissions → Location → "Allow only while using the app") and that location is turned on. If you closed Chrome\'s location prompt a few times, Chrome may block it for a while — tap the icon left of the web address → Permissions → Location → Allow.' + manual;
   }
 
   el('useLocationBtn').addEventListener('click', async () => {
@@ -1249,7 +1272,7 @@
       }
     } catch (err) {
       console.error('Geolocation error', err);
-      alert(isGeolocationError(err) ? geolocationErrorMessage(err) : err.message);
+      alert(isGeolocationError(err) ? await geolocationErrorMessage(err) : err.message);
     } finally {
       btn.disabled = false;
       btn.textContent = originalText;
@@ -1356,7 +1379,7 @@
       console.error('Weather lookup failed', err);
       if (!quiet) {
         alert(isGeolocationError(err)
-          ? geolocationErrorMessage(err) + '\n\nWeather needs a location — add one above, then try again.'
+          ? await geolocationErrorMessage(err) + '\n\nWeather needs a location — add one above, then try again.'
           : 'Could not get the weather: ' + err.message);
       }
     } finally {
@@ -1902,7 +1925,8 @@
   // ---------- Init ----------
   applyTheme(document.documentElement.dataset.theme);
   el('headerDate').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-  if (location.protocol === 'file:') {
+  if (openedFromFile) {
+    el('locationHint').textContent = openedFromFileAdvice() + ' You can still type a location above.';
     el('locationHint').style.display = 'block';
   }
 
