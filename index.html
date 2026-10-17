@@ -705,7 +705,6 @@
   let lightboxPhotos = [];
   let lightboxIndex = 0;
 
-  const photoUrlCache = new Map();
 
   const el = id => document.getElementById(id);
 
@@ -862,29 +861,48 @@
   }
 
   // ---------- Persistence ----------
-  async function loadFromLocalStorage() {
+  // Without a connected folder, entries live in this browser's IndexedDB. (Older versions used
+  // localStorage, which Chrome caps at ~5 MB per site — too small once photos are involved.)
+  const LEGACY_STORAGE_KEY = 'personal-journal-data';
+  const BROWSER_DATA_KEY = 'journal-data';
+
+  async function loadFromBrowserStorage() {
     try {
-      const raw = localStorage.getItem('personal-journal-data');
-      if (raw) data = JSON.parse(raw);
-    } catch (e) { console.error(e); }
-  }
-  function saveToLocalStorage() {
+      const stored = await idbGet(BROWSER_DATA_KEY);
+      if (stored && Array.isArray(stored.entries)) { data = stored; return; }
+    } catch (e) { console.error('Could not read IndexedDB', e); }
+    // First run after the switch: bring localStorage data over. The old copy is left in place.
     try {
-      localStorage.setItem('personal-journal-data', JSON.stringify(data));
-    } catch (e) { console.error('Could not save to localStorage', e); }
+      const raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (raw) {
+        data = JSON.parse(raw);
+        await saveToBrowserStorage();
+      }
+    } catch (e) { console.error('Could not read localStorage', e); }
   }
+
+  async function saveToBrowserStorage() {
+    try { await idbSet(BROWSER_DATA_KEY, data); return true; }
+    catch (e) { console.error('IndexedDB save failed', e); }
+    try { localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(data)); return true; }
+    catch (e) { console.error('localStorage save failed', e); }
+    return false;
+  }
+
   async function saveData() {
     if (dataFileHandle) {
       try {
         const writable = await dataFileHandle.createWritable();
         await writable.write(JSON.stringify(data, null, 2));
         await writable.close();
-        return;
+        return true;
       } catch (e) {
-        console.error('Failed writing file, falling back to localStorage', e);
+        console.error('Failed writing file, falling back to browser storage', e);
       }
     }
-    saveToLocalStorage();
+    if (await saveToBrowserStorage()) return true;
+    alert('Your journal could not be saved on this device (storage is full or unavailable). Your latest changes are NOT saved — copy any text you want to keep before closing or refreshing this page.');
+    return false;
   }
   async function loadFromFile() {
     const file = await dataFileHandle.getFile();
@@ -982,27 +1000,72 @@
   });
 
   // ---------- Photo helpers ----------
-  async function resolvePhotoUrl(path) {
-    if (!path) return '';
-    if (path.startsWith('data:')) return path;
-    if (photoUrlCache.has(path)) return photoUrlCache.get(path);
-    if (!photosDirHandle) return '';
-    try {
-      const name = path.split('/').pop();
-      const fh = await photosDirHandle.getFileHandle(name);
-      const file = await fh.getFile();
-      const url = URL.createObjectURL(file);
-      photoUrlCache.set(path, url);
-      return url;
-    } catch (e) {
-      console.error('Could not load photo', path, e);
-      return '';
+  // Full-size phone photos decode to ~48 MB each, which makes mobile Chrome drop and redraw
+  // parts of the page. So the page only ever shows downscaled copies, made one at a time.
+  const THUMB_SIDE = 360;     // timeline, editor, viewer and calendar thumbnails
+  const LIGHTBOX_SIDE = 2048; // full-screen photo viewer
+  const STORED_SIDE = 2048;   // photos saved into browser storage (no connected folder)
+
+  async function photoBlob(path) {
+    if (path.startsWith('data:')) return (await fetch(path)).blob();
+    if (!photosDirHandle) return null;
+    const fh = await photosDirHandle.getFileHandle(path.split('/').pop());
+    return fh.getFile();
+  }
+
+  // Returns a JPEG no larger than maxSide on its long edge (or the original if already small).
+  async function scaleImageBlob(blob, maxSide, quality = 0.85) {
+    const bitmap = await createImageBitmap(blob);
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && blob.size < 1.5e6) { bitmap.close(); return blob; }
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; // JPEG has no transparency
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    return new Promise((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error('could not encode image')), 'image/jpeg', quality));
+  }
+
+  const scaledUrlCache = new Map(); // `${maxSide}|${path}` -> Promise<objectURL>
+  let scaleQueue = Promise.resolve(); // one full-size decode at a time keeps memory low on phones
+
+  function scaledPhotoUrl(path, maxSide) {
+    if (!path) return Promise.resolve('');
+    const key = maxSide + '|' + path;
+    if (!scaledUrlCache.has(key)) {
+      const job = scaleQueue.then(async () => {
+        try {
+          const blob = await photoBlob(path);
+          if (!blob) { scaledUrlCache.delete(key); return ''; } // folder not connected yet
+          return URL.createObjectURL(await scaleImageBlob(blob, maxSide));
+        } catch (e) {
+          console.error('Could not load photo', path, e);
+          scaledUrlCache.delete(key); // allow a retry next render
+          return '';
+        }
+      });
+      scaleQueue = job;
+      scaledUrlCache.set(key, job);
+    }
+    return scaledUrlCache.get(key);
+  }
+
+  function forgetScaledPhoto(path) {
+    for (const [key, job] of scaledUrlCache) {
+      if (key.endsWith('|' + path)) {
+        job.then(url => { if (url) URL.revokeObjectURL(url); });
+        scaledUrlCache.delete(key);
+      }
     }
   }
 
   function resolveImagesIn(container) {
     container.querySelectorAll('img[data-photo]').forEach(img => {
-      resolvePhotoUrl(img.dataset.photo).then(url => { if (url) img.src = url; });
+      img.decoding = 'async';
+      scaledPhotoUrl(img.dataset.photo, THUMB_SIDE).then(url => { if (url) img.src = url; });
     });
   }
 
@@ -1010,9 +1073,7 @@
     if (photosDirHandle && !path.startsWith('data:')) {
       try { await photosDirHandle.removeEntry(path.split('/').pop()); } catch (e) { /* already gone */ }
     }
-    const cached = photoUrlCache.get(path);
-    if (cached) URL.revokeObjectURL(cached);
-    photoUrlCache.delete(path);
+    forgetScaledPhoto(path);
   }
 
   async function handleNewPhotos(fileList) {
@@ -1030,14 +1091,17 @@
           const path = 'photos/' + name;
           draft.photos.push(path);
           sessionAddedPhotos.push(path);
-          photoUrlCache.set(path, URL.createObjectURL(file));
         } catch (e) { console.error('Failed to save photo', e); }
       } else {
+        // Browser storage: keep a phone-screen-sized copy rather than the multi-MB original.
+        let toStore = file;
+        try { toStore = await scaleImageBlob(file, STORED_SIDE, 0.85); }
+        catch (e) { console.error('Could not shrink photo; storing original', e); }
         const dataUrl = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result);
           reader.onerror = reject;
-          reader.readAsDataURL(file);
+          reader.readAsDataURL(toStore);
         });
         draft.photos.push(dataUrl);
         sessionAddedPhotos.push(dataUrl);
@@ -1547,7 +1611,10 @@
   }
   function updateLightbox() {
     const path = lightboxPhotos[lightboxIndex];
-    resolvePhotoUrl(path).then(url => { el('lightboxImg').src = url; });
+    el('lightboxImg').removeAttribute('src');
+    scaledPhotoUrl(path, LIGHTBOX_SIDE).then(url => {
+      if (lightboxPhotos[lightboxIndex] === path && url) el('lightboxImg').src = url;
+    });
     el('lightboxCounter').textContent = `${lightboxIndex + 1} / ${lightboxPhotos.length}`;
   }
   function closeLightbox() {
@@ -1931,10 +1998,14 @@
   }
 
   (async () => {
-    await loadFromLocalStorage();
+    await loadFromBrowserStorage();
     await tryRestoreDir();
     updateFileStatus(dirHandle && (await dirHandle.queryPermission({ mode: 'readwrite' })) !== 'granted' ? 'needsPermission' : undefined);
     renderCurrentView();
+    // Entries kept in browser storage: ask the browser not to clear them when space runs low.
+    if (!dirHandle && navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().catch(() => {});
+    }
   })();
 })();
 </script>
