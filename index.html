@@ -1120,7 +1120,7 @@
   function locationText(loc) {
     if (!loc) return '';
     if (loc.label) return loc.label;
-    if (loc.lat != null) return `${loc.lat.toFixed(3)}, ${loc.lng.toFixed(3)}`;
+    if (loc.lat != null) return 'Pinned location';
     return '';
   }
 
@@ -1212,18 +1212,22 @@
     return null;
   }
 
+  // Approximate street address, e.g. "52 Cadillac Square, Detroit, Michigan, United States",
+  // led by the place's name when there is one ("Winchester Pub, 930 Avenida Revolución, …").
   async function reverseGeocode(lat, lng) {
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`, {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
         headers: { 'Accept': 'application/json' },
       });
       if (!res.ok) throw new Error('reverse geocode request failed');
       const result = await res.json();
       const a = result.address || {};
-      const place = a.city || a.town || a.village || a.hamlet || a.suburb || a.county;
+      const street = a.road ? [a.house_number, a.road].filter(Boolean).join(' ') : (a.neighbourhood || a.suburb || '');
+      const place = a.city || a.town || a.village || a.hamlet || a.municipality || a.county;
       const region = a.state && a.state !== place ? a.state : null;
-      const short = [place, region, a.country].filter(Boolean).join(', ');
-      return short || result.display_name || null;
+      const name = result.name && result.name !== a.road ? result.name : null;
+      const parts = [...new Set([name, street, place, region, a.country].filter(Boolean))];
+      return parts.join(', ') || result.display_name || null;
     } catch (e) {
       console.error('Reverse geocode failed', e);
       return null;
@@ -1241,23 +1245,39 @@
 
   function renderLocationMeta() {
     const box = el('locationMeta');
-    if (!draft.location || (!draft.location.label && draft.location.lat == null)) {
+    const loc = draft.location;
+    if (!loc || (!loc.label && loc.lat == null)) {
       box.innerHTML = '';
       return;
     }
-    const url = mapsUrlFor(draft.location);
-    const coordsText = draft.location.lat != null ? `${draft.location.lat.toFixed(4)}, ${draft.location.lng.toFixed(4)}` : '';
+    const pinned = loc.lat != null;
+    const url = mapsUrlFor(loc);
     box.innerHTML = `
-      ${coordsText ? `<span>${coordsText}</span>` : ''}
+      ${pinned && !loc.label ? '<span>Couldn’t find an address, but your spot is pinned on the map. Type a name above if you like.</span>' : ''}
       ${url ? `<a href="${url}" target="_blank" rel="noopener noreferrer">Open in Maps ↗</a>` : ''}
+      ${pinned ? '<button type="button" id="lookupAddressBtn">Get address</button>' : ''}
       <button type="button" id="clearLocationBtn">Clear</button>
     `;
   }
 
-  el('locationMeta').addEventListener('click', e => {
+  el('locationMeta').addEventListener('click', async e => {
     if (e.target.id === 'clearLocationBtn') {
       draft.location = null;
       el('locationLabelInput').value = '';
+      renderLocationMeta();
+    } else if (e.target.id === 'lookupAddressBtn') {
+      // Re-run the lookup from the saved pin, e.g. to upgrade an older city-only label.
+      const loc = draft.location;
+      e.target.disabled = true;
+      e.target.textContent = 'Looking up…';
+      const address = await reverseGeocode(loc.lat, loc.lng);
+      if (!draft || draft.location !== loc) return;
+      if (address) {
+        loc.label = address;
+        el('locationLabelInput').value = address;
+      } else {
+        alert('Couldn’t look up an address right now. Try again in a moment.');
+      }
       renderLocationMeta();
     }
   });
@@ -1281,7 +1301,7 @@
         const lng = pos.coords.longitude;
         const name = await reverseGeocode(lat, lng);
         if (!draft) { reject(new Error('Editor was closed.')); return; }
-        draft.location = { lat, lng, label: name || `${lat.toFixed(4)}, ${lng.toFixed(4)}` };
+        draft.location = { lat, lng, label: name || '' };
         el('locationLabelInput').value = draft.location.label;
         renderLocationMeta();
         resolve(draft.location);
