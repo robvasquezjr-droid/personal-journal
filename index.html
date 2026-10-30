@@ -1201,14 +1201,15 @@
   });
 
   // ---------- Location ----------
+  // Prefer searching the looked-up address: the Google Maps website titles a bare coordinate
+  // pin with the coordinates, while an address search shows the address or place (like the
+  // phone app does). `address` is kept separately so renaming the label doesn't break the link.
   function mapsUrlFor(location) {
     if (!location) return null;
-    if (location.lat != null && location.lng != null) {
-      return `https://www.google.com/maps?q=${location.lat},${location.lng}`;
-    }
-    if (location.label) {
-      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.label)}`;
-    }
+    const search = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+    if (location.address) return search(location.address);
+    if (location.lat != null && location.lng != null) return search(`${location.lat},${location.lng}`);
+    if (location.label) return search(location.label);
     return null;
   }
 
@@ -1274,6 +1275,7 @@
       if (!draft || draft.location !== loc) return;
       if (address) {
         loc.label = address;
+        loc.address = address;
         el('locationLabelInput').value = address;
       } else {
         alert('Couldn’t look up an address right now. Try again in a moment.');
@@ -1301,7 +1303,7 @@
         const lng = pos.coords.longitude;
         const name = await reverseGeocode(lat, lng);
         if (!draft) { reject(new Error('Editor was closed.')); return; }
-        draft.location = { lat, lng, label: name || '' };
+        draft.location = { lat, lng, label: name || '', address: name || null };
         el('locationLabelInput').value = draft.location.label;
         renderLocationMeta();
         resolve(draft.location);
@@ -1455,6 +1457,7 @@
         if (!hit) throw new Error(`couldn't find "${loc.label}" on the map — try a city name`);
         loc.lat = hit.lat;
         loc.lng = hit.lng;
+        loc.address = loc.label; // the typed place was found on the map, so it's searchable as-is
         renderLocationMeta();
       }
       const weather = await fetchWeather(dateStr, loc.lat, loc.lng);
@@ -1713,7 +1716,8 @@
     const all = scope === 'all';
     if (all || scope === 'text') parts.push(entry.title, entry.body);
     if ((all || scope === 'places') && entry.location && entry.location.label) {
-      parts.push(entry.location.label, placeAliases(entry.location.label));
+      const placeText = [entry.location.label, entry.location.address].filter(Boolean).join(' ');
+      parts.push(placeText, placeAliases(placeText));
     }
     if ((all || scope === 'mood') && MOODS[entry.mood]) parts.push(MOODS[entry.mood].label);
     if ((all || scope === 'weather') && entry.weather) parts.push(weatherSearchWords(entry.weather));
