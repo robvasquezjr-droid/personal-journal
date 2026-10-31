@@ -1255,13 +1255,38 @@
     const url = mapsUrlFor(loc);
     box.innerHTML = `
       ${pinned && !loc.label ? '<span>Couldn’t find an address, but your spot is pinned on the map. Type a name above if you like.</span>' : ''}
-      ${url ? `<a href="${url}" target="_blank" rel="noopener noreferrer">Open in Maps ↗</a>` : ''}
+      ${url ? `<a class="maps-link" href="${url}" target="_blank" rel="noopener noreferrer">Open in Maps ↗</a>` : ''}
       ${pinned ? '<button type="button" id="lookupAddressBtn">Get address</button>' : ''}
       <button type="button" id="clearLocationBtn">Clear</button>
     `;
   }
 
+  // Older entries only have a pin, which desktop Google Maps titles with coordinates. The first
+  // time one is opened, look up its address, open Maps to that, and remember it for next time.
+  // Returns true when it took over the click.
+  function openLocationLazily(loc, link, ev, onAddressFound) {
+    if (!loc || loc.address || loc.lat == null) return false;
+    ev.preventDefault();
+    const win = window.open('about:blank', '_blank'); // open now, while the click still counts
+    reverseGeocode(loc.lat, loc.lng).then(address => {
+      if (address) {
+        loc.address = address;
+        if (onAddressFound) onAddressFound();
+      }
+      const url = mapsUrlFor(loc);
+      link.href = url;
+      if (win) { win.opener = null; win.location.href = url; }
+      else window.location.href = url;
+    });
+    return true;
+  }
+
   el('locationMeta').addEventListener('click', async e => {
+    const mapsLink = e.target.closest('a.maps-link');
+    if (mapsLink) {
+      openLocationLazily(draft.location, mapsLink, e, renderLocationMeta);
+      return;
+    }
     if (e.target.id === 'clearLocationBtn') {
       draft.location = null;
       el('locationLabelInput').value = '';
@@ -1545,6 +1570,18 @@
     closeViewer();
     if (entry) openEditor(entry);
   });
+  // Save an address found by openLocationLazily and refresh links that still point at the pin.
+  function rememberLookedUpAddress() {
+    saveData();
+    renderCurrentView();
+  }
+
+  el('viewerChips').addEventListener('click', e => {
+    const link = e.target.closest('a.loc-pill');
+    const entry = data.entries.find(x => x.id === viewingId);
+    if (link && entry) openLocationLazily(entry.location, link, e, rememberLookedUpAddress);
+  });
+
   el('viewerPhotos').addEventListener('click', e => {
     const img = e.target.closest('img[data-photo]');
     if (!img) return;
@@ -1838,6 +1875,7 @@
     const locLink = e.target.closest('a.loc-pill');
     if (locLink) {
       e.stopPropagation();
+      openLocationLazily(entry.location, locLink, e, rememberLookedUpAddress);
       return;
     }
     const thumbImg = e.target.closest('img.thumb');
